@@ -74,6 +74,10 @@ What the inherited codebase already provides (found by mapping the source), so w
 - [ ] Build on the existing architect/editor mode: first a short plan, then a task breakdown, then the edits for each task. **Planned**
 - [ ] Show the plan and task list as they progress, and in `auto` permission mode run through them without stopping to ask. **Planned**
 
+### 10. Gateway support
+**Goal:** make it easy to put a routing gateway between pairforge and many providers.
+- [x] Optional OmniRoute integration: `--omniroute` and `/omniroute` (lists the gateway's models). It is an external service, not bundled. **Done**
+
 ## Working principles
 
 - Prefer small, reviewable changes with tests.

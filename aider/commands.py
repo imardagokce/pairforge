@@ -19,7 +19,12 @@ from aider.format_settings import format_settings
 from aider.help import Help, install_help_extra
 from aider.io import CommandCompletionException
 from aider.llm import litellm
-from aider.local_models import LocalModelError, list_ollama_models
+from aider.local_models import (
+    DEFAULT_OMNIROUTE_BASE,
+    LocalModelError,
+    list_ollama_models,
+    list_openai_compatible_models,
+)
 from aider.permissions import MODES, PermissionPolicy, is_trusted
 from aider.repo import ANY_GIT_ERROR
 from aider.run_cmd import run_cmd
@@ -235,6 +240,31 @@ class Commands:
         for model in found:
             self.io.tool_output(f"ollama_chat/{model['name']}  ({model['size_gb']} GB)")
         self.io.tool_output("Use one with: /model ollama_chat/<name>")
+
+    def cmd_omniroute(self, args):
+        "List models available on an OmniRoute gateway: /omniroute [base_url]"
+
+        base_url = (
+            args.strip()
+            or os.environ.get("OMNIROUTE_API_BASE")
+            or os.environ.get("OPENAI_API_BASE")
+            or DEFAULT_OMNIROUTE_BASE
+        )
+        api_key = os.environ.get("OMNIROUTE_API_KEY") or os.environ.get("OPENAI_API_KEY") or None
+
+        try:
+            found = list_openai_compatible_models(base_url, api_key)
+        except LocalModelError as e:
+            self.io.tool_error(str(e))
+            return
+
+        if not found:
+            self.io.tool_output(f"No models are available on the OmniRoute gateway at {base_url}.")
+            return
+
+        for model_id in found:
+            self.io.tool_output(f"openai/{model_id}")
+        self.io.tool_output("Use one with: /model openai/<id>")
 
     def cmd_web(self, args, return_content=False):
         "Scrape a webpage, convert to markdown and send in a message"

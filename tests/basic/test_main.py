@@ -1481,3 +1481,96 @@ class TestMain(TestCase):
             )
         for call in mock_io_instance.tool_warning.call_args_list:
             self.assertNotIn("Cost estimates may be inaccurate", call[0][0])
+
+
+class TestOmniRouteMain(TestCase):
+    def setUp(self):
+        self._env = patch.dict(
+            os.environ, {"AIDER_CHECK_UPDATE": "false", "AIDER_ANALYTICS": "false"}
+        )
+        self._env.start()
+        for name in (
+            "OMNIROUTE_API_BASE",
+            "OMNIROUTE_API_KEY",
+            "OPENAI_API_BASE",
+            "OPENAI_API_KEY",
+        ):
+            os.environ.pop(name, None)
+        self.original_cwd = os.getcwd()
+        self.tempdir_obj = IgnorantTemporaryDirectory()
+        os.chdir(self.tempdir_obj.name)
+        self.homedir_obj = IgnorantTemporaryDirectory()
+        os.environ["HOME"] = self.homedir_obj.name
+
+    def tearDown(self):
+        os.chdir(self.original_cwd)
+        self.tempdir_obj.cleanup()
+        self.homedir_obj.cleanup()
+        self._env.stop()
+
+    def test_omniroute_without_key_uses_placeholder(self):
+        main(
+            ["--omniroute", "--no-git", "--exit", "--yes"],
+            input=DummyInput(),
+            output=DummyOutput(),
+        )
+
+        self.assertEqual(os.environ["OPENAI_API_BASE"], "http://localhost:20128/v1")
+        self.assertEqual(os.environ["OPENAI_API_KEY"], "omniroute")
+
+    def test_omniroute_uses_omniroute_api_key_env(self):
+        os.environ["OMNIROUTE_API_KEY"] = "omni-secret"
+        main(
+            ["--omniroute", "--no-git", "--exit", "--yes"],
+            input=DummyInput(),
+            output=DummyOutput(),
+        )
+
+        self.assertEqual(os.environ["OPENAI_API_KEY"], "omni-secret")
+
+    def test_explicit_openai_api_base_wins_over_omniroute(self):
+        main(
+            [
+                "--omniroute",
+                "--openai-api-base",
+                "http://127.0.0.1:9999/v1",
+                "--no-git",
+                "--exit",
+                "--yes",
+            ],
+            input=DummyInput(),
+            output=DummyOutput(),
+        )
+
+        self.assertEqual(os.environ["OPENAI_API_BASE"], "http://127.0.0.1:9999/v1")
+
+    def test_non_local_http_omniroute_url_warns(self):
+        with patch("aider.io.InputOutput.tool_warning") as tool_warning:
+            main(
+                [
+                    "--omniroute",
+                    "http://gateway.example.com:20128/v1",
+                    "--no-git",
+                    "--exit",
+                    "--yes",
+                ],
+                input=DummyInput(),
+                output=DummyOutput(),
+            )
+
+        messages = [c.args[0] for c in tool_warning.call_args_list if c.args]
+        self.assertIn(
+            "OmniRoute URL is not local and not HTTPS: your API key would be sent unencrypted.",
+            messages,
+        )
+
+    def test_local_omniroute_url_does_not_warn(self):
+        with patch("aider.io.InputOutput.tool_warning") as tool_warning:
+            main(
+                ["--omniroute", "--no-git", "--exit", "--yes"],
+                input=DummyInput(),
+                output=DummyOutput(),
+            )
+
+        messages = [c.args[0] for c in tool_warning.call_args_list if c.args]
+        self.assertFalse(any("not local and not HTTPS" in m for m in messages))
