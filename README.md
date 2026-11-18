@@ -90,7 +90,7 @@ pytest
 
 ## Contributing
 
-Issues and pull requests are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
+Issues and pull requests are welcome. See the [roadmap](ROADMAP.md) for planned work. Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
 
 ## Attribution
 
