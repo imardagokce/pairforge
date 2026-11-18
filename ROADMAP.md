@@ -68,6 +68,10 @@ What the inherited codebase already provides (found by mapping the source), so w
 - Change the inherited behavior deliberately and record why.
 - Pull useful upstream fixes by cherry-picking from the `upstream` remote. We do not track upstream wholesale.
 
+## Long-term ideas
+
+- [ ] **Faster, lighter core in a compiled language (Rust or Go).** The slow part of a session is the LLM, not Python, so this is about startup time, install size and shipping a single binary, not raw speed. We defer it until the feature set and architecture have settled. A staged path is possible: first move heavy parts such as the repo map into a separate core called from Python, and rewrite the rest only if that proves worthwhile. A full rewrite would no longer be a fork; the original project would still be credited. **Idea**
+
 ## Ideas
 
 Add new ideas here as they come up. Open an issue to discuss anything that is not on this list.
