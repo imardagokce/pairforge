@@ -32,6 +32,7 @@ from aider.io import InputOutput
 from aider.llm import litellm  # noqa: F401; properly init litellm on launch
 from aider.models import ModelSettings
 from aider.onboarding import offer_openrouter_oauth, select_default_model
+from aider.permissions import PermissionPolicy, decline, is_declined, is_trusted, trust
 from aider.repo import ANY_GIT_ERROR, GitRepo
 from aider.report import report_uncaught_exceptions
 from aider.versioncheck import check_version, install_from_main_branch, install_upgrade
@@ -969,6 +970,20 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
     # Track auto-commits configuration
     analytics.event("auto_commits", enabled=bool(args.auto_commits))
 
+    permission_root = str(Path(git_root or Path.cwd()).resolve())
+    permission_trusted = is_trusted(permission_root)
+    interactive = not args.yes_always and sys.stdin is not None and sys.stdin.isatty()
+    if not permission_trusted and interactive and not is_declined(permission_root):
+        if io.confirm_ask(
+            "Do you trust this folder? Auto permission mode only works in trusted folders.",
+            subject=permission_root,
+        ):
+            trust(permission_root)
+            permission_trusted = True
+        else:
+            decline(permission_root)
+    permission_policy = PermissionPolicy(args.permission_mode, permission_trusted, permission_root)
+
     try:
         coder = Coder.create(
             main_model=main_model,
@@ -1004,6 +1019,7 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
             auto_copy_context=args.copy_paste,
             auto_accept_architect=args.auto_accept_architect,
             add_gitignore_files=args.add_gitignore_files,
+            permission_policy=permission_policy,
         )
     except UnknownEditFormat as err:
         io.tool_error(str(err))

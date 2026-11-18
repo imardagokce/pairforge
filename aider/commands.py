@@ -20,6 +20,7 @@ from aider.help import Help, install_help_extra
 from aider.io import CommandCompletionException
 from aider.llm import litellm
 from aider.local_models import LocalModelError, list_ollama_models
+from aider.permissions import MODES, PermissionPolicy, is_trusted
 from aider.repo import ANY_GIT_ERROR
 from aider.run_cmd import run_cmd
 from aider.scrape import Scraper, install_playwright
@@ -1125,8 +1126,12 @@ class Commands:
         token_count = self.coder.main_model.token_count(combined_output)
         k_tokens = token_count / 1000
 
+        policy = self.coder.permission_policy
         if add_on_nonzero_exit:
             add = exit_status != 0
+        elif policy and policy.auto_allows_action():
+            self.io.tool_output(f"Auto-approved: add {k_tokens:.1f}k tokens of output of {args}")
+            add = True
         else:
             add = self.io.confirm_ask(f"Add {k_tokens:.1f}k tokens of command output to the chat?")
 
@@ -1736,6 +1741,49 @@ class Commands:
         # Output announcements
         announcements = "\n".join(self.coder.get_announcements())
         self.io.tool_output(announcements)
+
+    def cmd_permissions(self, args):
+        "Show or set the permission mode: /permissions [ask|auto]"
+        usage = "Usage: /permissions [ask|auto]"
+        value = (args or "").strip().lower()
+
+        policy = self.coder.permission_policy
+        if not value:
+            if policy is None:
+                self.io.tool_output("Permission mode: ask")
+                self.io.tool_output(f"Root: {self.coder.root}")
+                self.io.tool_output(f"Trusted: {is_trusted(self.coder.root)}")
+            else:
+                self.io.tool_output(f"Permission mode: {policy.mode}")
+                self.io.tool_output(f"Root: {policy.root}")
+                self.io.tool_output(f"Trusted: {policy.trusted}")
+                if policy.mode == "auto":
+                    self.io.tool_output(
+                        "Auto mode in a trusted folder skips file prompts and also runs shell"
+                        " commands without asking."
+                    )
+            return
+
+        if value not in MODES:
+            self.io.tool_error(usage)
+            return
+
+        if policy is None:
+            policy = PermissionPolicy(root=self.coder.root)
+            self.coder.permission_policy = policy
+        policy.mode = value
+        self.io.tool_output(f"Permission mode set to {value}")
+
+        if value == "auto" and not policy.trusted:
+            self.io.tool_warning(
+                "Auto mode only takes effect in trusted folders, and this folder is not trusted."
+                " Prompts will still be shown."
+            )
+        elif value == "auto":
+            self.io.tool_output(
+                "Auto mode: files in this folder are added and edited without asking, and shell"
+                " commands run without asking."
+            )
 
     def cmd_copy_context(self, args=None):
         """Copy the current chat context as markdown, suitable to paste into a web UI"""

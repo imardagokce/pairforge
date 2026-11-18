@@ -766,6 +766,18 @@ def get_parser(default_config_files, git_root):
         default=None,
     )
     group.add_argument(
+        "--permission-mode",
+        metavar="PERMISSION_MODE",
+        choices=["ask", "auto"],
+        default="ask",
+        help=(
+            "Set the permission mode: 'ask' (default) asks before adding or editing files and"
+            " running shell commands. 'auto' stops those prompts inside a trusted folder: files"
+            " are added and edited without asking, and shell commands, URLs and lint/test fixes"
+            " run without asking (default: ask)"
+        ),
+    )
+    group.add_argument(
         "-v",
         "--verbose",
         action="store_true",

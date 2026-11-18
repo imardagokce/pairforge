@@ -180,6 +180,7 @@ class Coder:
                 total_tokens_sent=from_coder.total_tokens_sent,
                 total_tokens_received=from_coder.total_tokens_received,
                 file_watcher=from_coder.file_watcher,
+                permission_policy=from_coder.permission_policy,
             )
             use_kwargs.update(update)  # override to complete the switch
             use_kwargs.update(kwargs)  # override passed kwargs
@@ -338,6 +339,7 @@ class Coder:
         file_watcher=None,
         auto_copy_context=False,
         auto_accept_architect=True,
+        permission_policy=None,
     ):
         # Fill in a dummy Analytics if needed, but it is never .enable()'d
         self.analytics = analytics if analytics is not None else Analytics()
@@ -411,6 +413,7 @@ class Coder:
 
         self.auto_commits = auto_commits
         self.dirty_commits = dirty_commits
+        self.permission_policy = permission_policy
 
         self.dry_run = dry_run
         self.pretty = self.io.pretty
@@ -978,7 +981,7 @@ class Coder:
         for url in urls:
             if url not in self.rejected_urls:
                 url = url.rstrip(".',\"")
-                if self.io.confirm_ask(
+                if self.auto_approved(f"add URL {url} to the chat") or self.io.confirm_ask(
                     "Add URL to the chat?", subject=url, group=group, allow_never=True
                 ):
                     inp += "\n\n"
@@ -1606,7 +1609,9 @@ class Coder:
             self.auto_commit(edited, context="Ran the linter")
             self.lint_outcome = not lint_errors
             if lint_errors:
-                ok = self.io.confirm_ask("Attempt to fix lint errors?")
+                ok = self.auto_approved("attempt to fix lint errors") or self.io.confirm_ask(
+                    "Attempt to fix lint errors?"
+                )
                 if ok:
                     self.reflected_message = lint_errors
                     return
@@ -1622,7 +1627,9 @@ class Coder:
             test_errors = self.commands.cmd_test(self.test_cmd)
             self.test_outcome = not test_errors
             if test_errors:
-                ok = self.io.confirm_ask("Attempt to fix test errors?")
+                ok = self.auto_approved("attempt to fix test errors") or self.io.confirm_ask(
+                    "Attempt to fix test errors?"
+                )
                 if ok:
                     self.reflected_message = test_errors
                     return
@@ -1774,7 +1781,11 @@ class Coder:
         added_fnames = []
         group = ConfirmGroup(new_mentions)
         for rel_fname in sorted(new_mentions):
-            if self.io.confirm_ask(
+            if self.auto_add_mention_allowed(rel_fname):
+                self.add_rel_fname(rel_fname)
+                added_fnames.append(rel_fname)
+                self.io.tool_output(f"Auto-added {rel_fname} (permission mode: auto)")
+            elif self.io.confirm_ask(
                 "Add file to the chat?", subject=rel_fname, group=group, allow_never=True
             ):
                 self.add_rel_fname(rel_fname)
@@ -1784,6 +1795,36 @@ class Coder:
 
         if added_fnames:
             return prompts.added_files.format(fnames=", ".join(added_fnames))
+
+    def auto_permission_allows(self, abs_path):
+        policy = getattr(self, "permission_policy", None)
+        return bool(policy and policy.auto_allows(abs_path))
+
+    def auto_approved(self, description):
+        """In auto mode in a trusted folder, approve an action without asking, and say so."""
+        policy = getattr(self, "permission_policy", None)
+        if not (policy and policy.auto_allows_action()):
+            return False
+        self.io.tool_output(f"Auto-approved: {description}")
+        return True
+
+    def auto_add_mention_allowed(self, rel_fname):
+        """Auto mode adds a mentioned file without asking, but only if it is small."""
+        abs_path = self.abs_root_path(rel_fname)
+        if not self.auto_permission_allows(abs_path):
+            return False
+
+        content = self.io.read_text(abs_path, silent=True)
+        if not isinstance(content, str):
+            return False
+
+        tokens = self.main_model.token_count(content)
+        if tokens is None:
+            return False
+
+        max_input = self.main_model.info.get("max_input_tokens")
+        limit = max_input * 0.25 if max_input else 8000
+        return tokens <= limit
 
     def send(self, messages, model=None, functions=None):
         self.got_reasoning_content = False
@@ -2209,7 +2250,9 @@ class Coder:
             return
 
         if not Path(full_path).exists():
-            if not self.io.confirm_ask("Create new file?", subject=path):
+            if not self.auto_permission_allows(full_path) and not self.io.confirm_ask(
+                "Create new file?", subject=path
+            ):
                 self.io.tool_output(f"Skipping edits to {path}")
                 return
 
@@ -2228,7 +2271,7 @@ class Coder:
             self.check_added_files()
             return True
 
-        if not self.io.confirm_ask(
+        if not self.auto_permission_allows(full_path) and not self.io.confirm_ask(
             "Allow edits to file that has not been added to the chat?",
             subject=path,
         ):
@@ -2458,12 +2501,14 @@ class Coder:
             1 for cmd in commands if cmd.strip() and not cmd.strip().startswith("#")
         )
         prompt = "Run shell command?" if command_count == 1 else "Run shell commands?"
-        if not self.io.confirm_ask(
-            prompt,
-            subject="\n".join(commands),
-            explicit_yes_required=True,
-            group=group,
-            allow_never=True,
+        if not self.auto_approved("; ".join(c.strip() for c in commands if c.strip())) and (
+            not self.io.confirm_ask(
+                prompt,
+                subject="\n".join(commands),
+                explicit_yes_required=True,
+                group=group,
+                allow_never=True,
+            )
         ):
             return
 
@@ -2481,8 +2526,9 @@ class Coder:
             if output:
                 accumulated_output += f"Output from {command}\n{output}\n"
 
-        if accumulated_output.strip() and self.io.confirm_ask(
-            "Add command output to the chat?", allow_never=True
+        if accumulated_output.strip() and (
+            self.auto_approved("add command output to the chat")
+            or self.io.confirm_ask("Add command output to the chat?", allow_never=True)
         ):
             num_lines = len(accumulated_output.strip().splitlines())
             line_plural = "line" if num_lines == 1 else "lines"
