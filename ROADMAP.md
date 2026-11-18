@@ -64,10 +64,15 @@ What the inherited codebase already provides (found by mapping the source), so w
 
 ### 8. Fewer prompts and trusted folders
 **Goal:** stop asking permission for harmless reads, and ask once for the thing that matters: whether to trust a folder.
-- [ ] Add files the user mentions to the chat without asking ("Add file to the chat?"), when they are inside a trusted folder. Writing, creating files, running shell commands and installing packages keep their prompts. **Planned**
+- [ ] A `--permission-mode auto` (and `/permissions`) that, inside a trusted folder, stops asking before adding files, creating or editing files, running shell commands and similar actions. The default mode `ask` keeps today's behavior. **In progress**
 - [ ] A one-time "Trust this folder?" question when pairforge starts in a folder it has not seen before; the answer is remembered. **Planned**
 - [ ] Respect the model's context size: add small files in full, and give an outline for large ones instead of overflowing small local models or wasting paid tokens. **Planned**
 - [ ] Optional graphify integration (an install extra, not a hard dependency) so reading a folder or file uses a code graph and targeted queries rather than raw file contents. **Planned**
+
+### 9. Plan-first workflow
+**Goal:** for larger tasks, work the way a careful engineer does: plan, split the work, then code.
+- [ ] Build on the existing architect/editor mode: first a short plan, then a task breakdown, then the edits for each task. **Planned**
+- [ ] Show the plan and task list as they progress, and in `auto` permission mode run through them without stopping to ask. **Planned**
 
 ## Working principles
 
