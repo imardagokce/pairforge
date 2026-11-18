@@ -1,13 +1,4 @@
-> **Note:** This repository (`cachy`) is a fork of [Aider-AI/aider](https://github.com/Aider-AI/aider), licensed under Apache 2.0 (see [NOTICE](NOTICE)). It is not the official Aider project.
-
-<details>
-<summary><b>Codebase map (generated with graphify)</b></summary>
-
-An AST knowledge graph of the `aider/` package (1,494 nodes, 3,020 edges). Most connected hubs: `Coder` (`aider/coders/base_coder.py`), `Commands` (`aider/commands.py`), `main()` (`aider/main.py`), `InputOutput` (`aider/io.py`), `Model` (`aider/models.py`).
-
-Open [`docs/graph/index.html`](docs/graph/index.html) in a browser for the interactive graph; raw data is in [`docs/graph/graph.json`](docs/graph/graph.json).
-
-</details>
+> **Note:** This repository (`pairforge`) is a fork of [Aider-AI/aider](https://github.com/Aider-AI/aider), licensed under Apache 2.0 (see [NOTICE](NOTICE)). It is not the official Aider project.
 
 <p align="center">
     <a href="https://aider.chat/"><img src="https://aider.chat/assets/logo.svg" alt="Aider Logo" width="300"></a>
