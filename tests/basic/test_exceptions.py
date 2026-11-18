@@ -46,7 +46,12 @@ def test_permission_denied_error():
     """Test specific handling of PermissionDeniedError"""
     ex = LiteLLMExceptions()
     import httpx
-    from litellm import PermissionDeniedError
+    import litellm
+    import pytest
+
+    PermissionDeniedError = getattr(litellm, "PermissionDeniedError", None)
+    if PermissionDeniedError is None:
+        pytest.skip("this litellm version does not export PermissionDeniedError")
 
     request = httpx.Request("GET", "https://example.com")
     response = httpx.Response(403, request=request)
