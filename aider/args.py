@@ -138,7 +138,10 @@ def get_parser(default_config_files, git_root):
     group.add_argument(
         "--reasoning-effort",
         type=str,
-        help="Set the reasoning_effort API parameter (default: not set)",
+        help=(
+            "Set the reasoning_effort API parameter (default: not set). Use 'auto' to pick"
+            " low/medium/high per message with a local heuristic (no extra LLM call)"
+        ),
     )
     group.add_argument(
         "--thinking-tokens",

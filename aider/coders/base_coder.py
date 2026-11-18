@@ -924,6 +924,11 @@ class Coder:
     def run_one(self, user_message, preproc):
         self.init_before_message()
 
+        previous_auto_effort = self.main_model.last_auto_effort
+        auto_effort = self.main_model.apply_auto_reasoning_effort(user_message)
+        if auto_effort and auto_effort != previous_auto_effort:
+            self.io.tool_output(f"Auto effort: {auto_effort}")
+
         if preproc:
             message = self.preproc_user_input(user_message)
         else:

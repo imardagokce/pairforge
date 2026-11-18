@@ -1715,7 +1715,7 @@ class Commands:
         self.io.tool_output(announcements)
 
     def cmd_reasoning_effort(self, args):
-        "Set the reasoning effort level (values: number or low/medium/high depending on model)"
+        "Set reasoning effort (number, low/medium/high, or auto; depends on model)"
         model = self.coder.main_model
 
         if not args.strip():

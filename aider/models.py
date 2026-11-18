@@ -18,6 +18,7 @@ from PIL import Image
 
 from aider import __version__
 from aider.dump import dump  # noqa: F401
+from aider.effort import AUTO, choose_reasoning_effort
 from aider.llm import litellm
 from aider.openrouter import OpenRouterModelManager
 from aider.sendchat import ensure_alternating_roles, sanity_check_messages
@@ -339,6 +340,9 @@ class Model(ModelSettings):
         self.max_chat_history_tokens = 1024
         self.weak_model = None
         self.editor_model = None
+        # Reasoning effort "auto": pick low/medium/high per message (see effort.py)
+        self.auto_reasoning_effort = False
+        self.last_auto_effort = None
 
         # Find the extra settings
         self.extra_model_settings = next(
@@ -789,8 +793,18 @@ class Model(ModelSettings):
         return map_tokens
 
     def set_reasoning_effort(self, effort):
-        """Set the reasoning effort parameter for models that support it"""
+        """Set the reasoning effort parameter for models that support it.
+
+        "auto" turns on per-message selection (see apply_auto_reasoning_effort)
+        and writes no API value itself.
+        """
+        if effort is not None and str(effort).strip().lower() == AUTO:
+            self.auto_reasoning_effort = True
+            self.last_auto_effort = None
+            return
+
         if effort is not None:
+            self.auto_reasoning_effort = False
             if self.name.startswith("openrouter/"):
                 if not self.extra_params:
                     self.extra_params = {}
@@ -803,6 +817,24 @@ class Model(ModelSettings):
                 if "extra_body" not in self.extra_params:
                     self.extra_params["extra_body"] = {}
                 self.extra_params["extra_body"]["reasoning_effort"] = effort
+
+    def apply_auto_reasoning_effort(self, message):
+        """Choose a concrete effort level for this message when effort is "auto".
+
+        The level is written into extra_params exactly as set_reasoning_effort
+        writes a concrete value, but auto mode stays on. Returns the chosen level,
+        or None if auto mode is off or the model does not accept reasoning_effort.
+        """
+        if not self.auto_reasoning_effort:
+            return None
+        if not (self.accepts_settings and "reasoning_effort" in self.accepts_settings):
+            return None
+
+        level = choose_reasoning_effort(message)
+        self.set_reasoning_effort(level)
+        self.auto_reasoning_effort = True
+        self.last_auto_effort = level
+        return level
 
     def parse_token_value(self, value):
         """
@@ -905,6 +937,8 @@ class Model(ModelSettings):
 
     def get_reasoning_effort(self):
         """Get reasoning effort value if available"""
+        if self.auto_reasoning_effort and self.last_auto_effort is None:
+            return AUTO
         if self.extra_params:
             # Check for OpenRouter reasoning format
             if self.name.startswith("openrouter/"):
