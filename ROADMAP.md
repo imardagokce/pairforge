@@ -18,7 +18,7 @@ What the inherited codebase already provides (found by mapping the source), so w
 
 ### 1. Local models made easy
 **Goal:** running a locally hosted model should take one command, not manual configuration.
-- [ ] Discover running local servers (Ollama, LM Studio, llama.cpp server) and list their models. **Planned**
+- [ ] Discover running local servers (Ollama, LM Studio, llama.cpp server) and list their models. **In progress** (`/ollama` lists Ollama models; LM Studio and llama.cpp are still to do)
 - [ ] `--local` quick-start that picks a model and sets sensible context size and edit format. **Planned**
 - [ ] Per-model presets for common local models (context window, edit format, token limits). **Planned**
 - [ ] Clear, actionable errors when the server is down or the context window is too small. **Planned**
@@ -26,7 +26,8 @@ What the inherited codebase already provides (found by mapping the source), so w
 ### 2. Automatic compaction
 **Goal:** long sessions stay usable without the user managing context.
 - [ ] Trigger compaction automatically at a configurable fraction of the context window, instead of only at a fixed history token limit. **Planned**
-- [ ] A manual `/compact` command, plus a visible notice of what was summarized. **Planned**
+- [x] A manual `/compact` command, plus a visible notice of what was summarized. **Done**
+- [x] `/autocompact [N | N% | default]` to set the auto-summarize threshold during a session. **Done**
 - [ ] Keep recent turns and file edits verbatim; summarize only older discussion. **Planned**
 - [ ] Tests covering summary quality limits and token accounting. **Planned**
 

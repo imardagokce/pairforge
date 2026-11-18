@@ -19,6 +19,7 @@ from aider.format_settings import format_settings
 from aider.help import Help, install_help_extra
 from aider.io import CommandCompletionException
 from aider.llm import litellm
+from aider.local_models import LocalModelError, list_ollama_models
 from aider.repo import ANY_GIT_ERROR
 from aider.run_cmd import run_cmd
 from aider.scrape import Scraper, install_playwright
@@ -215,6 +216,24 @@ class Commands:
             models.print_matching_models(self.io, args)
         else:
             self.io.tool_output("Please provide a partial model name to search for.")
+
+    def cmd_ollama(self, args):
+        "List models available on a local Ollama server: /ollama [base_url]"
+
+        try:
+            found = list_ollama_models(args.strip() or None)
+        except LocalModelError as e:
+            self.io.tool_error(str(e))
+            return
+
+        if not found:
+            self.io.tool_output("No models are installed on the Ollama server.")
+            self.io.tool_output("Install one with: ollama pull <model>")
+            return
+
+        for model in found:
+            self.io.tool_output(f"ollama_chat/{model['name']}  ({model['size_gb']} GB)")
+        self.io.tool_output("Use one with: /model ollama_chat/<name>")
 
     def cmd_web(self, args, return_content=False):
         "Scrape a webpage, convert to markdown and send in a message"
@@ -441,6 +460,89 @@ class Commands:
         self._drop_all_files()
         self._clear_chat_history()
         self.io.tool_output("All files dropped and chat history cleared.")
+
+    def cmd_compact(self, args):
+        "Summarize the chat history now to free up context"
+        self.coder.summarize_end()
+
+        if not self.coder.done_messages:
+            self.io.tool_output("Nothing to compact.")
+            return
+
+        model = self.coder.main_model
+        before = sum(model.token_count(msg) for msg in self.coder.done_messages)
+
+        try:
+            summary = self.coder.summarizer.summarize_all(self.coder.done_messages)
+        except ValueError as err:
+            self.io.tool_error(str(err))
+            return
+
+        # keep the user/assistant alternation the same way ChatSummary.summarize does
+        if summary and summary[-1]["role"] != "assistant":
+            summary.append(dict(role="assistant", content="Ok."))
+        self.coder.done_messages = summary
+
+        after = sum(model.token_count(msg) for msg in self.coder.done_messages)
+        self.io.tool_output(f"Compacted chat history: {before} -> {after} tokens.")
+
+    @staticmethod
+    def _parse_autocompact_arg(arg, context_size, default_tokens):
+        """Return the new auto-summarize token threshold for an /autocompact argument.
+
+        Raises ValueError with a user-facing message if the argument is invalid.
+        """
+        usage = "Usage: /autocompact [N | N% | default]  (N > 0, N% is 1-100)"
+        arg = (arg or "").strip().lower()
+
+        if arg == "default":
+            return int(default_tokens)
+
+        if arg.endswith("%"):
+            try:
+                percent = int(arg[:-1])
+            except ValueError:
+                raise ValueError(usage)
+            if not 1 <= percent <= 100:
+                raise ValueError(usage)
+            if not context_size:
+                raise ValueError(
+                    "The model's context window size is unknown, so N% cannot be used."
+                )
+            return int(context_size * percent / 100)
+
+        try:
+            tokens = int(arg)
+        except ValueError:
+            raise ValueError(usage)
+        if tokens <= 0:
+            raise ValueError(usage)
+        return tokens
+
+    def cmd_autocompact(self, args):
+        "Show or set the token size above which chat history is auto-summarized: /autocompact [N | N% | default]"
+        summarizer = self.coder.summarizer
+        context_size = self.coder.main_model.info.get("max_input_tokens")
+
+        args = (args or "").strip()
+        if not args:
+            ctx = f"{context_size:,}" if context_size else "unknown"
+            self.io.tool_output(
+                f"Auto-summarize threshold: {summarizer.max_tokens:,} tokens"
+                f" (model context window: {ctx} tokens)."
+            )
+            return
+
+        try:
+            new_max = self._parse_autocompact_arg(
+                args, context_size, self.coder.main_model.max_chat_history_tokens
+            )
+        except ValueError as err:
+            self.io.tool_error(str(err))
+            return
+
+        summarizer.max_tokens = new_max
+        self.io.tool_output(f"Auto-summarize threshold set to {new_max:,} tokens.")
 
     def cmd_tokens(self, args):
         "Report on the number of tokens used by the current chat context"

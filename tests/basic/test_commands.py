@@ -2224,3 +2224,115 @@ class TestCommands(TestCase):
             )
             self.assertEqual(new_coder.done_messages, [{"role": "user", "content": "d1"}])
             self.assertEqual(new_coder.cur_messages, [{"role": "user", "content": "c1"}])
+
+
+class TestCompactCommands(TestCase):
+    def setUp(self):
+        self.original_cwd = os.getcwd()
+        self.tempdir = tempfile.mkdtemp()
+        os.chdir(self.tempdir)
+        self.GPT35 = Model("gpt-3.5-turbo")
+
+    def tearDown(self):
+        os.chdir(self.original_cwd)
+        shutil.rmtree(self.tempdir, ignore_errors=True)
+
+    def _make_commands(self):
+        io = InputOutput(pretty=False, fancy_input=False, yes=True)
+        coder = Coder.create(self.GPT35, None, io)
+        return Commands(io, coder), coder, io
+
+    def test_cmd_compact_empty_history(self):
+        commands, coder, io = self._make_commands()
+        coder.done_messages = []
+        with mock.patch.object(coder.summarizer, "summarize_all") as summarize_all:
+            with mock.patch.object(io, "tool_output") as tool_output:
+                commands.cmd_compact("")
+        summarize_all.assert_not_called()
+        tool_output.assert_called_with("Nothing to compact.")
+
+    def test_cmd_compact_replaces_done_messages(self):
+        commands, coder, io = self._make_commands()
+        coder.done_messages = [
+            {"role": "user", "content": "hello there"},
+            {"role": "assistant", "content": "hi, how can I help"},
+            {"role": "user", "content": "explain foo"},
+            {"role": "assistant", "content": "foo is a bar"},
+        ]
+        summary = [{"role": "user", "content": "SUMMARY OF CHAT"}]
+        with mock.patch.object(coder.summarizer, "summarize_all", return_value=summary) as sa:
+            with mock.patch.object(io, "tool_output") as tool_output:
+                commands.cmd_compact("")
+        sa.assert_called_once()
+        self.assertEqual(coder.done_messages[0], summary[0])
+        self.assertEqual(coder.done_messages[-1]["role"], "assistant")
+        self.assertTrue(tool_output.call_args[0][0].startswith("Compacted chat history: "))
+
+    def test_cmd_compact_summarizer_error(self):
+        commands, coder, io = self._make_commands()
+        original = [{"role": "user", "content": "keep me"}]
+        coder.done_messages = list(original)
+        with mock.patch.object(
+            coder.summarizer, "summarize_all", side_effect=ValueError("boom")
+        ):
+            with mock.patch.object(io, "tool_error") as tool_error:
+                commands.cmd_compact("")
+        tool_error.assert_called_with("boom")
+        self.assertEqual(coder.done_messages, original)
+
+    def test_cmd_autocompact_show(self):
+        commands, coder, io = self._make_commands()
+        coder.summarizer.max_tokens = 1234
+        coder.main_model.info = dict(coder.main_model.info, max_input_tokens=4000)
+        with mock.patch.object(io, "tool_output") as tool_output:
+            commands.cmd_autocompact("")
+        msg = tool_output.call_args[0][0]
+        self.assertIn("1,234", msg)
+        self.assertIn("4,000", msg)
+
+    def test_cmd_autocompact_set_tokens(self):
+        commands, coder, io = self._make_commands()
+        commands.cmd_autocompact("777")
+        self.assertEqual(coder.summarizer.max_tokens, 777)
+
+    def test_cmd_autocompact_set_percent(self):
+        commands, coder, io = self._make_commands()
+        coder.main_model.info = dict(coder.main_model.info, max_input_tokens=10000)
+        commands.cmd_autocompact("25%")
+        self.assertEqual(coder.summarizer.max_tokens, 2500)
+
+    def test_cmd_autocompact_percent_unknown_context(self):
+        commands, coder, io = self._make_commands()
+        coder.main_model.info = dict(coder.main_model.info, max_input_tokens=0)
+        before = coder.summarizer.max_tokens
+        with mock.patch.object(io, "tool_error") as tool_error:
+            commands.cmd_autocompact("50%")
+        tool_error.assert_called_once()
+        self.assertEqual(coder.summarizer.max_tokens, before)
+
+    def test_cmd_autocompact_default(self):
+        commands, coder, io = self._make_commands()
+        coder.summarizer.max_tokens = 5
+        commands.cmd_autocompact("default")
+        self.assertEqual(
+            coder.summarizer.max_tokens, int(coder.main_model.max_chat_history_tokens)
+        )
+
+    def test_cmd_autocompact_invalid(self):
+        commands, coder, io = self._make_commands()
+        before = coder.summarizer.max_tokens
+        for bad in ["abc", "0", "-5", "0%", "101%", "x%", "1.5"]:
+            with mock.patch.object(io, "tool_error") as tool_error:
+                commands.cmd_autocompact(bad)
+            tool_error.assert_called_once()
+            self.assertIn("Usage", tool_error.call_args[0][0])
+        self.assertEqual(coder.summarizer.max_tokens, before)
+
+    def test_parse_autocompact_arg(self):
+        parse = Commands._parse_autocompact_arg
+        self.assertEqual(parse("100", 8000, 1024), 100)
+        self.assertEqual(parse(" 50% ", 8000, 1024), 4000)
+        self.assertEqual(parse("100%", 8000, 1024), 8000)
+        self.assertEqual(parse("DEFAULT", 8000, 1024), 1024)
+        with self.assertRaises(ValueError):
+            parse("", 8000, 1024)
