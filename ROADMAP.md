@@ -33,9 +33,9 @@ What the inherited codebase already provides (found by mapping the source), so w
 
 ### 3. Automatic effort level
 **Goal:** the tool chooses how much reasoning a task needs.
-- [ ] An `auto` value for `--reasoning-effort` that selects low, medium or high from the request and model capability. **Planned**
-- [ ] Respect models that do not support the parameter (no error, no silent no-op). **Planned**
-- [ ] Show the chosen level in the UI and allow an override per message. **Planned**
+- [x] An `auto` value for `--reasoning-effort` that selects low, medium or high per message with a local heuristic (no extra LLM call). **Done**
+- [x] Respect models that do not support the parameter (no error). **Done**
+- [ ] Show the chosen level in the UI and allow an override per message. **In progress** (a line is printed when the level changes; per-message override is still to do)
 
 ### 4. Language support
 **Goal:** a first-class experience in more languages.
@@ -61,6 +61,13 @@ What the inherited codebase already provides (found by mapping the source), so w
 - [ ] Rename the command and package (the `aider` name belongs to the original project). **Planned**
 - [ ] Update documentation, badges and entry points to match. **Planned**
 - [ ] Keep `LICENSE.txt`, `NOTICE` and attribution to the original project intact. **Planned**
+
+### 8. Fewer prompts and trusted folders
+**Goal:** stop asking permission for harmless reads, and ask once for the thing that matters: whether to trust a folder.
+- [ ] Add files the user mentions to the chat without asking ("Add file to the chat?"), when they are inside a trusted folder. Writing, creating files, running shell commands and installing packages keep their prompts. **Planned**
+- [ ] A one-time "Trust this folder?" question when pairforge starts in a folder it has not seen before; the answer is remembered. **Planned**
+- [ ] Respect the model's context size: add small files in full, and give an outline for large ones instead of overflowing small local models or wasting paid tokens. **Planned**
+- [ ] Optional graphify integration (an install extra, not a hard dependency) so reading a folder or file uses a code graph and targeted queries rather than raw file contents. **Planned**
 
 ## Working principles
 
