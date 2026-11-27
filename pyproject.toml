@@ -1,7 +1,7 @@
 
 [project]
-name = "aider-chat"
-description = "Aider is AI pair programming in your terminal"
+name = "pairforge"
+description = "pairforge is AI pair programming in your terminal (an independent fork of Aider)"
 readme = "README.md"
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -21,9 +21,11 @@ requires-python = ">=3.10,<3.15"
 dynamic = ["dependencies", "optional-dependencies", "version"]
 
 [project.urls]
-Homepage = "https://github.com/Aider-AI/aider"
+Homepage = "https://github.com/imardagokce/pairforge"
 
 [project.scripts]
+pairforge = "aider.main:main"
+# Compatibility alias for users of the original command name.
 aider = "aider.main:main"
 
 [tool.setuptools.dynamic]

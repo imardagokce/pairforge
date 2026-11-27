@@ -58,8 +58,8 @@ What the inherited codebase already provides (found by mapping the source), so w
 
 ### 7. Project identity
 **Goal:** make pairforge a clearly separate product.
-- [ ] Rename the command and package (the `aider` name belongs to the original project). **Planned**
-- [ ] Update documentation, badges and entry points to match. **Planned**
+- [x] Command and distribution renamed: `pairforge` is the command (`aider` kept as an alias), the distribution is `pairforge`. The import package stays `aider` so upstream fixes still cherry-pick cleanly. **Done**
+- [x] Update documentation, badges and entry points to match. **Done**
 - [ ] Keep `LICENSE.txt`, `NOTICE` and attribution to the original project intact. **Planned**
 
 ### 8. Fewer prompts and trusted folders

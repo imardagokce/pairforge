@@ -212,7 +212,7 @@ def check_streamlit_install(io):
         io,
         "streamlit",
         "You need to install the aider browser feature",
-        ["aider-chat[browser]"],
+        utils.EXTRA_PACKAGES["browser"],
     )
 
 
@@ -439,7 +439,7 @@ def sanity_check_repo(repo, io):
         bad_ver = True
 
     if bad_ver:
-        io.tool_error("Aider only works with git repos with version number 1 or 2.")
+        io.tool_error("pairforge only works with git repos with version number 1 or 2.")
         io.tool_output("You may be able to convert your repo: git update-index --index-version=2")
         io.tool_output("Or run aider --no-git to proceed without using git.")
         io.offer_url(urls.git_index_version, "Open documentation url for more info?")
