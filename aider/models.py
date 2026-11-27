@@ -159,6 +159,25 @@ with importlib.resources.open_text("aider.resources", "model-settings.yml") as f
         MODEL_SETTINGS.append(ModelSettings(**model_settings_dict))
 
 
+def append_no_think(messages):
+    """Return a copy of messages with " /no_think" appended to the last user message.
+
+    The caller's list and dicts are left untouched. Messages are returned unchanged
+    when the last user message has no plain string content.
+    """
+    for idx in range(len(messages) - 1, -1, -1):
+        msg = messages[idx]
+        if msg.get("role") != "user":
+            continue
+        content = msg.get("content")
+        if not isinstance(content, str):
+            return messages
+        new_messages = list(messages)
+        new_messages[idx] = dict(msg, content=content + " /no_think")
+        return new_messages
+    return messages
+
+
 class ModelInfoManager:
     MODEL_INFO_URL = (
         "https://raw.githubusercontent.com/BerriAI/litellm/main/"
@@ -982,6 +1001,10 @@ class Model(ModelSettings):
     def is_ollama(self):
         return self.name.startswith("ollama/") or self.name.startswith("ollama_chat/")
 
+    def is_local_qwen3(self):
+        name = self.name.lower()
+        return name.startswith(("ollama/", "ollama_chat/", "lm_studio/")) and "qwen3" in name
+
     def github_copilot_token_to_open_ai_key(self, extra_headers):
         # check to see if there's an openai api key
         # If so, check to see if it's expire
@@ -1062,6 +1085,9 @@ class Model(ModelSettings):
             kwargs.update(self.extra_params)
         if self.is_ollama() and "num_ctx" not in kwargs:
             num_ctx = int(self.token_count(messages) * 1.25) + 8192
+            max_input_tokens = self.info.get("max_input_tokens")
+            if max_input_tokens:
+                num_ctx = min(num_ctx, max_input_tokens)
             kwargs["num_ctx"] = num_ctx
         key = json.dumps(kwargs, sort_keys=True).encode()
 
@@ -1072,6 +1098,9 @@ class Model(ModelSettings):
             kwargs["timeout"] = request_timeout
         if self.verbose:
             dump(kwargs)
+
+        if self.is_local_qwen3() and self.get_reasoning_effort() == "low":
+            messages = append_no_think(messages)
         kwargs["messages"] = messages
 
         # Are we using github copilot?
