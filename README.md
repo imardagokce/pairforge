@@ -33,7 +33,6 @@ Edit code in your local git repository through a conversation with an LLM.
 | **Lint and test loop** | Runs your linters and tests after each change and can fix what they report. |
 | **IDE friendly** | Ask for changes by adding comments to your code from any editor. |
 | **Images and web pages** | Add screenshots and URLs to the chat as context. |
-| **Voice-to-code** | Dictate requests and let the model implement them. |
 
 ## Quick start
 
