@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from aider import i18n
+from aider.commands import Commands
 from aider.locales import tr
 
 
@@ -27,6 +28,11 @@ def wrapped_messages():
                 and isinstance(node.args[0].value, str)
             ):
                 found.add(node.args[0].value)
+    # /help shows each command's docstring through _(), so those are wrapped too
+    for name in dir(Commands):
+        doc = getattr(Commands, name).__doc__
+        if name.startswith("cmd_") and doc:
+            found.add(doc)
     return found
 
 
