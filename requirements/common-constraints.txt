@@ -189,8 +189,6 @@ idna==3.11
     #   httpx
     #   requests
     #   yarl
-imgcat==0.6.0
-    # via -r requirements/requirements-dev.in
 importlib-metadata==7.2.1
     # via
     #   -r requirements/requirements.in
@@ -230,8 +228,6 @@ llama-index-instrumentation==0.5.0
     # via llama-index-workflows
 llama-index-workflows==2.16.1
     # via llama-index-core
-lox==1.0.0
-    # via -r requirements/requirements-dev.in
 markdown-it-py==4.0.0
     # via rich
 markupsafe==3.0.3

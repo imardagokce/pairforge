@@ -11,18 +11,6 @@ Please submit bug reports and feature requests as GitHub issues. This
 helps us to keep track of them and discuss potential solutions or
 enhancements.
 
-## LLM Benchmark Results
-
-Contributions of
-[LLM benchmark results](https://aider.chat/docs/leaderboards/)
-are welcome!
-See the
-[benchmark README](https://github.com/Aider-AI/aider/blob/main/benchmark/README.md)
-for information on running aider's code editing benchmarks.
-Submit results by opening a PR with edits to the
-[benchmark results data files](https://github.com/Aider-AI/aider/blob/main/aider/website/_data/).
-
-
 ## Pull Requests
 
 We appreciate your pull requests. For small changes, feel free to

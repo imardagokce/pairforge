@@ -15,6 +15,5 @@ aider/_version.py
 .venv/
 .#*
 .gitattributes
-tmp.benchmarks/
 .docker_bash_history
 graphify-out/

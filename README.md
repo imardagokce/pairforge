@@ -100,7 +100,6 @@ flowchart LR
 | `aider/repo.py` | Git integration |
 | `aider/io.py` | Terminal input and output |
 | `tests/` | Test suite |
-| `benchmark/` | Benchmark harness |
 
 ## Development
 
