@@ -99,7 +99,7 @@ def make_new_repo(git_root, io):
     return repo
 
 
-def setup_git(git_root, io):
+def setup_git(git_root, io, auto=False):
     if git is None:
         return
 
@@ -120,8 +120,9 @@ def setup_git(git_root, io):
             "You should probably run aider in your project's directory, not your home dir."
         )
         return
-    elif cwd and io.confirm_ask(
-        "No git repo found, create one to track aider's changes (recommended)?"
+    elif cwd and (
+        auto
+        or io.confirm_ask("No git repo found, create one to track aider's changes (recommended)?")
     ):
         git_root = str(cwd.resolve())
         repo = make_new_repo(git_root, io)
@@ -642,22 +643,11 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
     )
     if args.analytics is not False:
         if analytics.need_to_ask(args.analytics):
-            io.tool_output(
-                "Aider respects your privacy and never collects your code, chat messages, keys or"
-                " personal info."
-            )
-            io.tool_output(f"For more info: {urls.analytics}")
-            disable = not io.confirm_ask(
-                "Allow collection of anonymous analytics to help improve aider?"
-            )
-
+            # pairforge never asks: analytics stay off unless --analytics is given.
             analytics.asked_opt_in = True
-            if disable:
+            if not args.analytics:
                 analytics.disable(permanently=True)
-                io.tool_output("Analytics have been permanently disabled.")
-
             analytics.save_data()
-            io.tool_output()
 
         # This is a no-op if the user has opted out
         analytics.enable()
@@ -738,10 +728,30 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
     if args.check_update:
         check_version(io, verbose=args.verbose)
 
+    if args.permission_mode is None:
+        args.permission_mode = "auto" if args.local is not None else "ask"
+    permission_root = str(Path(git_root or Path.cwd()).resolve())
+    permission_trusted = is_trusted(permission_root)
+    interactive = not args.yes_always and sys.stdin is not None and sys.stdin.isatty()
+    if not permission_trusted and interactive and not is_declined(permission_root):
+        if io.confirm_ask(
+            "Do you trust this folder? Auto permission mode only works in trusted folders.",
+            subject=permission_root,
+        ):
+            trust(permission_root)
+            permission_trusted = True
+        else:
+            decline(permission_root)
+    permission_policy = PermissionPolicy(args.permission_mode, permission_trusted, permission_root)
+    io.permission_policy = permission_policy
+    auto = permission_policy.auto_allows_action()
+
     if args.git:
-        git_root = setup_git(git_root, io)
+        git_root = setup_git(git_root, io, auto=auto)
         if args.gitignore:
-            check_gitignore(git_root, io)
+            check_gitignore(git_root, io, ask=not auto)
+        if git_root:
+            permission_policy.root = Path(git_root).resolve()
 
     if args.verbose:
         show = format_settings(parser, args)
@@ -778,8 +788,7 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
     if not local_models.apply_local_quickstart(args, io):
         analytics.event("exit", reason="No local model found")
         return 1
-    if args.permission_mode is None:
-        args.permission_mode = "ask"
+    permission_policy.mode = args.permission_mode
 
     selected_model_name = select_default_model(args, io, analytics)
     if not selected_model_name:
@@ -975,20 +984,6 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
 
     # Track auto-commits configuration
     analytics.event("auto_commits", enabled=bool(args.auto_commits))
-
-    permission_root = str(Path(git_root or Path.cwd()).resolve())
-    permission_trusted = is_trusted(permission_root)
-    interactive = not args.yes_always and sys.stdin is not None and sys.stdin.isatty()
-    if not permission_trusted and interactive and not is_declined(permission_root):
-        if io.confirm_ask(
-            "Do you trust this folder? Auto permission mode only works in trusted folders.",
-            subject=permission_root,
-        ):
-            trust(permission_root)
-            permission_trusted = True
-        else:
-            decline(permission_root)
-    permission_policy = PermissionPolicy(args.permission_mode, permission_trusted, permission_root)
 
     try:
         coder = Coder.create(

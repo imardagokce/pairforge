@@ -1483,7 +1483,10 @@ class Coder:
                 " the context limit is exceeded."
             )
 
-            if not self.io.confirm_ask("Try to proceed anyway?"):
+            if not (
+                self.auto_approved("send the request anyway")
+                or self.io.confirm_ask("Try to proceed anyway?")
+            ):
                 return False
         return True
 

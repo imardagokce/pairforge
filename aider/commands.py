@@ -453,7 +453,10 @@ class Commands:
                 continue
 
             self.io.tool_output(errors)
-            if not self.io.confirm_ask(f"Fix lint errors in {fname}?", default="y"):
+            if not (
+                self.coder.auto_approved(f"fix lint errors in {fname}")
+                or self.io.confirm_ask(f"Fix lint errors in {fname}?", default="y")
+            ):
                 continue
 
             # Commit everything before we start fixing lint errors
@@ -992,7 +995,10 @@ class Commands:
                 self.io.tool_output(f"You can add to git with: /git add {fname}")
                 continue
 
-            if self.io.confirm_ask(f"No files matched '{word}'. Do you want to create {fname}?"):
+            if (
+                self.coder.auto_permission_allows(fname)
+                and self.coder.auto_approved(f"create {fname}")
+            ) or self.io.confirm_ask(f"No files matched '{word}'. Do you want to create {fname}?"):
                 try:
                     fname.parent.mkdir(parents=True, exist_ok=True)
                     fname.touch()
@@ -1828,6 +1834,7 @@ class Commands:
         if policy is None:
             policy = PermissionPolicy(root=self.coder.root, trusted=is_trusted(self.coder.root))
             self.coder.permission_policy = policy
+            self.io.permission_policy = policy
 
         if value == "trust":
             trust(policy.root)

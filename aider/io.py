@@ -794,9 +794,19 @@ class InputOutput:
         hist = "\n" + content.strip() + "\n\n"
         self.append_chat_history(hist)
 
+    permission_policy = None
+
+    def auto_mode(self):
+        """True in auto permission mode inside a trusted folder."""
+        policy = self.permission_policy
+        return bool(policy and policy.auto_allows_action())
+
     def offer_url(self, url, prompt="Open URL for more info?", allow_never=True):
         """Offer to open a URL in the browser, returns True if opened."""
         if url in self.never_prompts:
+            return False
+        if self.auto_mode():
+            self.tool_output(f"More info: {url}")
             return False
         if self.confirm_ask(prompt, subject=url, allow_never=allow_never):
             webbrowser.open(url)
