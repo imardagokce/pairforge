@@ -33,8 +33,8 @@ from rich.markdown import Markdown
 from rich.style import Style as RichStyle
 from rich.text import Text
 
-from aider.mdstream import MarkdownStream
 from aider.i18n import _, get_language
+from aider.mdstream import MarkdownStream
 
 from .dump import dump  # noqa: F401
 from .editor import pipe_editor
@@ -545,10 +545,9 @@ class InputOutput:
                     delay *= 2  # Exponential backoff
                 else:
                     self.tool_error(
-                        _("Unable to write file {filename} after {max_retries} "
-                          "attempts: {err}").format(
-                            filename=filename, max_retries=max_retries, err=err
-                        )
+                        _(
+                            "Unable to write file {filename} after {max_retries} attempts: {err}"
+                        ).format(filename=filename, max_retries=max_retries, err=err)
                     )
                     raise
             except OSError as err:
@@ -1214,10 +1213,9 @@ class InputOutput:
                     f.write(text)
             except (PermissionError, OSError) as err:
                 print(
-                    _(
-                        "Warning: Unable to write to chat history file "
-                        "{chat_history_file}."
-                    ).format(chat_history_file=self.chat_history_file)
+                    _("Warning: Unable to write to chat history file {chat_history_file}.").format(
+                        chat_history_file=self.chat_history_file
+                    )
                 )
                 print(err)
                 self.chat_history_file = None  # Disable further attempts to write

@@ -496,9 +496,7 @@ class Coder:
                 if utils.touch_file(fname):
                     self.io.tool_output(_("Creating empty file {fname}").format(fname=fname))
                 else:
-                    self.io.tool_warning(
-                        _("Can not create {fname}, skipping.").format(fname=fname)
-                    )
+                    self.io.tool_warning(_("Can not create {fname}, skipping.").format(fname=fname))
                     continue
 
             if not fname.is_file():
@@ -1554,9 +1552,7 @@ class Coder:
         try:
             summary = self.summarizer.summarize(self.done_messages, max_tokens=budget)
         except Exception as err:
-            self.io.tool_warning(
-                _("Could not summarize the chat history: {err}").format(err=err)
-            )
+            self.io.tool_warning(_("Could not summarize the chat history: {err}").format(err=err))
             return False
 
         new_tokens = self.count_message_tokens(summary)
@@ -2677,9 +2673,7 @@ class Coder:
 
         for path in edited:
             if self.dry_run:
-                self.io.tool_output(
-                    _("Did not apply edit to {path} (--dry-run)").format(path=path)
-                )
+                self.io.tool_output(_("Did not apply edit to {path} (--dry-run)").format(path=path))
             else:
                 self.io.tool_output(_("Applied edit to {path}").format(path=path))
 
@@ -2788,9 +2782,7 @@ class Coder:
         if not self.commit_before_message:
             return
         if self.commit_before_message[-1] != self.repo.get_head_commit_sha():
-            self.io.tool_output(
-                _("You can use /undo to undo and discard each aider commit.")
-            )
+            self.io.tool_output(_("You can use /undo to undo and discard each aider commit."))
 
     def dirty_commit(self):
         if not self.need_commit_before_edits:

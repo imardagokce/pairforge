@@ -18,7 +18,6 @@ import shtab
 from dotenv import load_dotenv
 from prompt_toolkit.enums import EditingMode
 
-from aider.i18n import _
 from aider import __version__, i18n, local_models, models, urls, utils
 from aider.analytics import Analytics
 from aider.args import get_parser
@@ -29,6 +28,7 @@ from aider.copypaste import ClipboardWatcher
 from aider.deprecated import handle_deprecated_model_args
 from aider.format_settings import format_settings, scrub_sensitive_info
 from aider.history import ChatSummary
+from aider.i18n import _
 from aider.io import InputOutput
 from aider.llm import litellm  # noqa: F401; properly init litellm on launch
 from aider.models import ModelSettings, default_reasoning_effort
@@ -52,8 +52,9 @@ def check_config_files_for_yes(config_files):
                         if line.strip().startswith("yes:"):
                             print(_("Configuration error detected."))
                             print(
-                                _("The file {config_file} contains a line "
-                                  "starting with 'yes:'").format(config_file=config_file)
+                                _(
+                                    "The file {config_file} contains a line starting with 'yes:'"
+                                ).format(config_file=config_file)
                             )
                             print(_("Please replace 'yes:' with 'yes-always:' in this file."))
                             found = True
@@ -127,8 +128,7 @@ def setup_git(git_root, io, auto=False):
     elif cwd and (
         auto
         or io.confirm_ask(
-            _("No git repo found, create one to track aider's changes "
-              "(recommended)?")
+            _("No git repo found, create one to track aider's changes (recommended)?")
         )
     ):
         git_root = str(cwd.resolve())
@@ -222,8 +222,10 @@ def check_gitignore(git_root, io, ask=True):
             )
         )
         io.tool_output(
-            _("Try running with appropriate permissions or manually add these "
-              "patterns to .gitignore:")
+            _(
+                "Try running with appropriate permissions or manually add these "
+                "patterns to .gitignore:"
+            )
         )
         for pattern in patterns_to_add:
             io.tool_output(f"  {pattern}")
@@ -393,8 +395,7 @@ def sanity_check_repo(repo, io):
     if bad_ver:
         io.tool_error(_("pairforge only works with git repos with version number 1 or 2."))
         io.tool_output(
-            _("You may be able to convert your repo: "
-              "git update-index --index-version=2")
+            _("You may be able to convert your repo: git update-index --index-version=2")
         )
         io.tool_output(_("Or run aider --no-git to proceed without using git."))
         io.offer_url(urls.git_index_version, _("Open documentation url for more info?"))
@@ -621,8 +622,10 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
                 good = False
         if not good:
             io.tool_output(
-                _("Provide either a single directory of a git repo, "
-                  "or a list of one or more files.")
+                _(
+                    "Provide either a single directory of a git repo, "
+                    "or a list of one or more files."
+                )
             )
             analytics.event("exit", reason="Invalid directory input")
             return 1
@@ -740,10 +743,9 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
     # Check if an OpenRouter model was selected/specified but the key is missing
     if args.model.startswith("openrouter/") and not os.environ.get("OPENROUTER_API_KEY"):
         io.tool_warning(
-            _("The specified model '{model}' requires an OpenRouter API key, "
-              "which was not found.").format(
-                model=args.model
-            )
+            _(
+                "The specified model '{model}' requires an OpenRouter API key, which was not found."
+            ).format(model=args.model)
         )
         # Attempt OAuth flow because the specific model needs it
         if offer_openrouter_oauth(io, analytics):
@@ -767,8 +769,9 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
         else:
             # OAuth failed or was declined by the user
             io.tool_error(
-                _("Unable to proceed without an OpenRouter API key "
-                  "for model '{model}'.").format(model=args.model)
+                _("Unable to proceed without an OpenRouter API key for model '{model}'.").format(
+                    model=args.model
+                )
             )
             io.offer_url(urls.models_and_keys, _("Open documentation URL for more info?"))
             analytics.event(
@@ -829,10 +832,9 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
                     )
                 )
                 io.tool_output(
-                    _("Use --no-check-model-accepts-settings to force "
-                      "the '{setting}' setting.").format(
-                        setting=setting["name"]
-                    )
+                    _(
+                        "Use --no-check-model-accepts-settings to force the '{setting}' setting."
+                    ).format(setting=setting["name"])
                 )
 
     if args.copy_paste and args.edit_format is None:
@@ -921,8 +923,9 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
     if not main_model.streaming:
         if args.stream:
             io.tool_warning(
-                _("Warning: Streaming is not supported by {model}. "
-                  "Disabling streaming.").format(model=main_model.name)
+                _("Warning: Streaming is not supported by {model}. Disabling streaming.").format(
+                    model=main_model.name
+                )
             )
         args.stream = False
 

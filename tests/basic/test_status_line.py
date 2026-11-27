@@ -151,7 +151,7 @@ class TestStatusLine(TestCase):
             self.assertIsNone(mock_get.call_args.kwargs.get("status_line"))
 
 
-class TestLocalThinkingAutoEffort(unittest.TestCase):
+class TestLocalThinkingAutoEffort(TestCase):
     """auto effort must reach /no_think and the status line for local qwen3."""
 
     def test_auto_low_on_local_qwen3_is_kept_and_reported(self):

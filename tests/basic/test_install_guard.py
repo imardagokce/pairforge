@@ -20,9 +20,11 @@ class TestInstallGuard(unittest.TestCase):
 
     def test_interactive_yes_still_installs(self):
         io = InputOutput(pretty=False, yes=None)
-        with patch.object(io, "prompt_session", None), patch(
-            "builtins.input", return_value="y"
-        ), patch("aider.utils.run_install", return_value=(False, "")) as run_install:
+        with (
+            patch.object(io, "prompt_session", None),
+            patch("builtins.input", return_value="y"),
+            patch("aider.utils.run_install", return_value=(False, "")) as run_install,
+        ):
             check_pip_install_extra(
                 io, "module_that_does_not_exist_xyz", "Needs an extra", ["some-package"]
             )
@@ -30,8 +32,9 @@ class TestInstallGuard(unittest.TestCase):
 
     def test_yes_always_does_not_install_playwright(self):
         io = InputOutput(pretty=False, yes=True)
-        with patch("aider.scrape.check_env", return_value=(False, False)), patch(
-            "aider.utils.run_install"
-        ) as run_install:
+        with (
+            patch("aider.scrape.check_env", return_value=(False, False)),
+            patch("aider.utils.run_install") as run_install,
+        ):
             self.assertFalse(install_playwright(io))
         run_install.assert_not_called()

@@ -11,8 +11,8 @@ import oslex
 from grep_ast import TreeContext, filename_to_lang
 from grep_ast.tsl import get_parser  # noqa: E402
 
-from aider.i18n import _
 from aider.dump import dump  # noqa: F401
+from aider.i18n import _
 from aider.run_cmd import run_cmd_subprocess  # noqa: F401
 
 # tree_sitter is throwing a FutureWarning

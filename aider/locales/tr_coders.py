@@ -15,7 +15,9 @@ MESSAGES = {
     "- Break your code into smaller files": "- Kodunuzu daha küçük dosyalara bölün",
     "- Break your code into smaller source files.": "- Kaynak kodunuzu daha küçük dosyalara bölün.",
     "- Use /clear to clear the chat history": "- Sohbet geçmişini temizlemek için /clear kullanın",
-    "- Use /clear to clear the chat history.": "- Sohbet geçmişini temizlemek için /clear kullanın.",  # noqa: E501
+    "- Use /clear to clear the chat history.": (  # noqa: E501
+        "- Sohbet geçmişini temizlemek için /clear kullanın."
+    ),
     "- Use /drop to remove unneeded files from the chat": (
         "- Gereksiz dosyaları sohbetten çıkarmak için /drop kullanın"
     ),
@@ -56,8 +58,7 @@ MESSAGES = {
         "Düzenlemeler uygulanmadan önce {path} commit ediliyor."
     ),
     "Context is {percent}% full ({total:,} of {window:,} tokens); summarizing the chat history...": (  # noqa: E501
-        "Bağlam %{percent} dolu ({total:,} / {window:,} belirteç); "
-        "sohbet geçmişi özetleniyor..."
+        "Bağlam %{percent} dolu ({total:,} / {window:,} belirteç); sohbet geçmişi özetleniyor..."
     ),
     "Cost: ${message_cost} message, ${total_cost} session.": (
         "Maliyet: ${message_cost} bu mesaj, ${total_cost} oturum."
@@ -132,9 +133,7 @@ MESSAGES = {
     "Repo-map: using {map_tokens} tokens, {refresh} refresh": (
         "Repo-map: {map_tokens} belirteç kullanıyor, {refresh} yenileme"
     ),
-    "Response does not appear to be in patch format.": (
-        "Yanıt yama biçiminde görünmüyor."
-    ),
+    "Response does not appear to be in patch format.": "Yanıt yama biçiminde görünmüyor.",
     "Restored previous conversation history.": "Önceki sohbet geçmişi geri yüklendi.",
     "Retrying in {delay:.1f} seconds...": "{delay:.1f} saniye içinde yeniden denenecek...",
     "Run shell command?": "Kabuk komutu çalıştırılsın mı?",
@@ -161,8 +160,9 @@ MESSAGES = {
     ),
     "Step {i}/{total}: {step}": "Adım {i}/{total}: {step}",
     "The LLM did not conform to the edit format.": "LLM düzenleme biçimine uymadı.",
-    "The model produced malformed edits twice; switching to the whole edit format for this session.": (  # noqa: E501
-        "Model iki kez hatalı düzenleme üretti; bu oturum için tüm dosya düzenleme biçimine geçiliyor."  # noqa: E501
+    "The model produced malformed edits twice; switching to the whole edit format for this session.": (  # noqa: E501  # noqa: E501
+        "Model iki kez hatalı düzenleme üretti; bu oturum için tüm dosya düzenleme biçimine"
+        " geçiliyor."
     ),
     "The planner returned no numbered steps; nothing was run.": (
         "Planlayıcı numaralı adım döndürmedi; hiçbir şey çalıştırılmadı."
@@ -184,9 +184,7 @@ MESSAGES = {
         "UPDATE uyarısı: Taşıma hedef dosyası zaten var, üzerine yazılıyor: {move_path}"
     ),
     "Unable to commit: {err}": "Commit yapılamadı: {err}",
-    "Unable to create {path}, skipping edits.": (
-        "{path} oluşturulamadı, düzenlemeler atlanıyor."
-    ),
+    "Unable to create {path}, skipping edits.": "{path} oluşturulamadı, düzenlemeler atlanıyor.",
     "Unable to find a fencing strategy! Falling back to: {open}...{close}": (
         "Çit stratejisi bulunamadı! Şuna dönülüyor: {open}...{close}"
     ),

@@ -8,8 +8,8 @@ from pathspec import PathSpec
 from pathspec.patterns import GitWildMatchPattern
 from watchfiles import watch
 
-from aider.i18n import _
 from aider.dump import dump  # noqa
+from aider.i18n import _
 from aider.watch_prompts import watch_ask_prompt, watch_code_prompt
 
 

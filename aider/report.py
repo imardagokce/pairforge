@@ -6,8 +6,8 @@ import traceback
 import urllib.parse
 import webbrowser
 
-from aider.i18n import _
 from aider import __version__
+from aider.i18n import _
 from aider.urls import github_issues
 from aider.versioncheck import VERSION_CHECK_FNAME
 

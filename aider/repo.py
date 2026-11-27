@@ -18,8 +18,8 @@ except ImportError:
 
 import pathspec
 
-from aider.i18n import _
 from aider import prompts, utils
+from aider.i18n import _
 
 from .dump import dump  # noqa: F401
 from .waiting import WaitingSpinner
@@ -313,9 +313,12 @@ class GitRepo:
                 # Perform the commit
                 self.repo.git.commit(cmd)
                 commit_hash = self.get_head_commit_sha(short=True)
-                self.io.tool_output(_("Commit {commit_hash} {commit_message}").format(
-                    commit_hash=commit_hash, commit_message=commit_message
-                ), bold=True)
+                self.io.tool_output(
+                    _("Commit {commit_hash} {commit_message}").format(
+                        commit_hash=commit_hash, commit_message=commit_message
+                    ),
+                    bold=True,
+                )
                 return commit_hash, commit_message
 
         except ANY_GIT_ERROR as err:

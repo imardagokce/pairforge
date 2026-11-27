@@ -11,8 +11,8 @@ from urllib.parse import parse_qs, urlparse
 
 import requests
 
-from aider.i18n import _
 from aider import urls
+from aider.i18n import _
 from aider.io import InputOutput
 
 
@@ -318,8 +318,9 @@ def start_openrouter_oauth_flow(io, analytics):
 
     MINUTES = 5
     io.tool_output(
-        _("\nWaiting up to {minutes} minutes for you to finish "
-          "in the browser...").format(minutes=MINUTES)
+        _("\nWaiting up to {minutes} minutes for you to finish in the browser...").format(
+            minutes=MINUTES
+        )
     )
     io.tool_output(_("Use Control-C to interrupt."))
 

@@ -93,10 +93,9 @@ def list_ollama_models(base_url=None, timeout=3):
         response = requests.get(url, timeout=timeout)
     except requests.RequestException:
         raise LocalModelError(
-            _(
-                "Could not reach Ollama at {base_url}. "
-                "Is `ollama serve` running?"
-            ).format(base_url=base_url)
+            _("Could not reach Ollama at {base_url}. Is `ollama serve` running?").format(
+                base_url=base_url
+            )
         )
 
     if response.status_code != 200:
@@ -119,8 +118,7 @@ def list_ollama_models(base_url=None, timeout=3):
             )
     except (ValueError, KeyError, TypeError):
         raise LocalModelError(
-            _("Ollama at {base_url} returned an unexpected "
-              "response.").format(base_url=base_url)
+            _("Ollama at {base_url} returned an unexpected response.").format(base_url=base_url)
         )
 
     return models
@@ -142,9 +140,11 @@ def list_openai_compatible_models(base_url, api_key=None, timeout=3):
         )
 
     if response.status_code in (401, 403):
-        raise LocalModelError(_("The API key was rejected by {url} (HTTP {status}).").format(
-            url=url, status=response.status_code
-        ))
+        raise LocalModelError(
+            _("The API key was rejected by {url} (HTTP {status}).").format(
+                url=url, status=response.status_code
+            )
+        )
     if response.status_code != 200:
         raise LocalModelError(f"{url} returned HTTP {response.status_code}.")
 
@@ -228,10 +228,9 @@ def choose_local_model(servers, wanted=None):
                 return model, server
         available = ", ".join(model for model, _ in candidates)
         raise LocalModelError(
-            _(
-                "Local model {wanted} was not found. "
-                "Available: {available}"
-            ).format(wanted=wanted, available=available)
+            _("Local model {wanted} was not found. Available: {available}").format(
+                wanted=wanted, available=available
+            )
         )
 
     def rank(item):

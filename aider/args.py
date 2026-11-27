@@ -160,8 +160,7 @@ def get_parser(default_config_files, git_root):
         action=argparse.BooleanOptionalAction,
         default=True,
         help=(
-            "Show a status line (model, context use, effort, git) under the prompt"
-            " (default: True)"
+            "Show a status line (model, context use, effort, git) under the prompt (default: True)"
         ),
     )
     group.add_argument(

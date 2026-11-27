@@ -5,9 +5,9 @@ import sys
 
 import pypandoc
 
-from aider.i18n import _
 from aider import __version__, urls, utils
 from aider.dump import dump  # noqa: F401
+from aider.i18n import _
 
 aider_user_agent = f"Aider/{__version__} +{urls.website}"
 

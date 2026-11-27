@@ -7,8 +7,8 @@ from pathlib import Path
 
 import oslex
 
-from aider.i18n import _
 from aider.dump import dump  # noqa: F401
+from aider.i18n import _
 from aider.waiting import Spinner
 
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".webp", ".pdf"}

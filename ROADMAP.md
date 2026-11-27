@@ -35,19 +35,21 @@ What the inherited codebase already provides (found by mapping the source), so w
 **Goal:** the tool chooses how much reasoning a task needs.
 - [x] An `auto` value for `--reasoning-effort` that selects low, medium or high per message with a local heuristic (no extra LLM call). **Done**
 - [x] Respect models that do not support the parameter (no error). **Done**
-- [ ] Show the chosen level in the UI and allow an override per message. **In progress** (a line is printed when the level changes; per-message override is still to do)
+- [x] Effort chosen per model by default: `auto` for models that accept a reasoning effort and for local thinking models, unless `--reasoning-effort` is given. **Done**
+- [x] Show the chosen level in the status line. **Done**
+- [ ] Allow an override per message. **In progress** (a line is printed when the level changes; per-message override is still to do)
 
 ### 4. Language support
 **Goal:** a first-class experience in more languages.
-- [ ] Localizable interface strings (prompts, messages, help). **Planned**
-- [ ] Turkish as the first additional interface language. **Planned**
-- [ ] Make the response language follow the user's locale by default, with `--chat-language` as an override. **Planned**
+- [x] Localizable interface strings: `_()` in `aider/i18n.py` with catalogs in `aider/locales`; messages, yes/no questions and `/help` command descriptions. Prompts to the model stay English. **Done**
+- [x] Turkish as the first additional interface language (`--ui-language tr`, `PAIRFORGE_LANG` or the system language); yes/no questions accept (E)vet/(H)ayır. **Done**
+- [x] Make the response language follow the interface language by default, with `--chat-language` as an override. **Done**
 
 ### 5. Terminal interface
 **Goal:** a polished, consistent and pleasant terminal experience.
 - [ ] A design pass: color theme, spacing and consistent message styles (user, assistant, tool, error). **Planned**
 - [ ] Better diff and edit presentation. **Planned**
-- [ ] A status line showing model, context usage, effort and git state. **Planned**
+- [x] A status line under the prompt showing model, context usage, effort and git state (`--no-status-line` turns it off). **Done**
 - [ ] Accessible themes (light, dark, high contrast) and a no-color mode. **Planned**
 
 ### 6. Feature pruning

@@ -40,9 +40,10 @@ class TestPairforgeRename(unittest.TestCase):
     def test_playwright_extra_does_not_install_aider_chat(self):
         io = MagicMock()
         io.confirm_ask.return_value = True
-        with patch("aider.scrape.check_env", return_value=(False, False)), patch(
-            "aider.utils.run_install", return_value=(True, "")
-        ) as run_install:
+        with (
+            patch("aider.scrape.check_env", return_value=(False, False)),
+            patch("aider.utils.run_install", return_value=(True, "")) as run_install,
+        ):
             install_playwright(io)
         self.assertTrue(run_install.called)
         for call in run_install.call_args_list:
@@ -51,9 +52,10 @@ class TestPairforgeRename(unittest.TestCase):
 
     def test_upgrade_paths_never_call_pip(self):
         io = MagicMock()
-        with patch("aider.utils.check_pip_install_extra") as check, patch(
-            "aider.utils.run_install"
-        ) as run_install:
+        with (
+            patch("aider.utils.check_pip_install_extra") as check,
+            patch("aider.utils.run_install") as run_install,
+        ):
             self.assertFalse(versioncheck.install_upgrade(io, "9.9.9"))
             self.assertFalse(versioncheck.install_from_main_branch(io))
         check.assert_not_called()
