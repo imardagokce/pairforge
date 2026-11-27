@@ -2272,9 +2272,7 @@ class TestCompactCommands(TestCase):
         commands, coder, io = self._make_commands()
         original = [{"role": "user", "content": "keep me"}]
         coder.done_messages = list(original)
-        with mock.patch.object(
-            coder.summarizer, "summarize_all", side_effect=ValueError("boom")
-        ):
+        with mock.patch.object(coder.summarizer, "summarize_all", side_effect=ValueError("boom")):
             with mock.patch.object(io, "tool_error") as tool_error:
                 commands.cmd_compact("")
         tool_error.assert_called_with("boom")
@@ -2326,9 +2324,7 @@ class TestCompactCommands(TestCase):
         commands, coder, io = self._make_commands()
         coder.summarizer.max_tokens = 5
         commands.cmd_autocompact("default")
-        self.assertEqual(
-            coder.summarizer.max_tokens, int(coder.main_model.max_chat_history_tokens)
-        )
+        self.assertEqual(coder.summarizer.max_tokens, int(coder.main_model.max_chat_history_tokens))
 
     def test_cmd_autocompact_invalid(self):
         commands, coder, io = self._make_commands()

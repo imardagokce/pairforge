@@ -90,9 +90,7 @@ def list_ollama_models(base_url=None, timeout=3):
     try:
         response = requests.get(url, timeout=timeout)
     except requests.RequestException:
-        raise LocalModelError(
-            f"Could not reach Ollama at {base_url}. Is `ollama serve` running?"
-        )
+        raise LocalModelError(f"Could not reach Ollama at {base_url}. Is `ollama serve` running?")
 
     if response.status_code != 200:
         raise LocalModelError(
@@ -130,9 +128,7 @@ def list_openai_compatible_models(base_url, api_key=None, timeout=3):
         )
 
     if response.status_code in (401, 403):
-        raise LocalModelError(
-            f"The API key was rejected by {url} (HTTP {response.status_code})."
-        )
+        raise LocalModelError(f"The API key was rejected by {url} (HTTP {response.status_code}).")
     if response.status_code != 200:
         raise LocalModelError(f"{url} returned HTTP {response.status_code}.")
 

@@ -4,9 +4,9 @@ from unittest import mock
 
 import requests
 
+from aider import models
 from aider.commands import Commands
 from aider.io import InputOutput
-from aider import models
 from aider.local_models import (
     LocalModelError,
     apply_local_quickstart,
@@ -46,9 +46,7 @@ class TestChooseLocalModel(unittest.TestCase):
         self.assertEqual(model, "ollama_chat/big:8b")
 
     def test_wanted_name_matches_without_prefix(self):
-        servers = [
-            _ollama([("ollama_chat/qwen-coder:7b", 4.0), ("ollama_chat/qwen3.5:4b", 3.0)])
-        ]
+        servers = [_ollama([("ollama_chat/qwen-coder:7b", 4.0), ("ollama_chat/qwen3.5:4b", 3.0)])]
         model, _ = choose_local_model(servers, "qwen3.5:4b")
         self.assertEqual(model, "ollama_chat/qwen3.5:4b")
 
@@ -246,9 +244,10 @@ class TestCmdOllama(unittest.TestCase):
         commands = Commands(io, None)
         found = [{"name": "llama3:latest", "size_gb": 4.3}]
 
-        with mock.patch(
-            "aider.commands.list_ollama_models", return_value=found
-        ) as lister, mock.patch.object(io, "tool_output") as tool_output:
+        with (
+            mock.patch("aider.commands.list_ollama_models", return_value=found) as lister,
+            mock.patch.object(io, "tool_output") as tool_output,
+        ):
             commands.cmd_ollama("")
 
         lister.assert_called_once_with(None)
@@ -341,9 +340,10 @@ class TestCmdLocal(unittest.TestCase):
         self._env.stop()
 
     def run_local(self, servers):
-        with mock.patch(
-            "aider.commands.discover_local_servers", return_value=servers
-        ), mock.patch.object(self.io, "tool_output") as tool_output:
+        with (
+            mock.patch("aider.commands.discover_local_servers", return_value=servers),
+            mock.patch.object(self.io, "tool_output") as tool_output,
+        ):
             self.commands.cmd_local("")
         return [c.args[0] for c in tool_output.call_args_list if c.args]
 

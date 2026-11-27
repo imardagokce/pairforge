@@ -568,7 +568,7 @@ class Commands:
         return tokens
 
     def cmd_autocompact(self, args):
-        "Show or set the token size above which chat history is auto-summarized: /autocompact [N | N% | default]"
+        "Show or set when chat history is auto-summarized: /autocompact [N | N% | default]"
         summarizer = self.coder.summarizer
         context_size = self.coder.main_model.info.get("max_input_tokens")
 

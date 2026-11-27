@@ -88,9 +88,11 @@ class TestCompactForContext(unittest.TestCase):
 
     def test_send_message_rebuilds_prompt_after_compacting(self):
         coder = self.make_coder()
-        with patch.object(coder, "compact_for_context", return_value=True) as compact, patch.object(
-            coder, "format_messages", wraps=coder.format_messages
-        ) as fmt, patch.object(coder, "check_tokens", return_value=False):
+        with (
+            patch.object(coder, "compact_for_context", return_value=True) as compact,
+            patch.object(coder, "format_messages", wraps=coder.format_messages) as fmt,
+            patch.object(coder, "check_tokens", return_value=False),
+        ):
             list(coder.send_message("hi"))
         compact.assert_called_once()
         self.assertEqual(fmt.call_count, 2)
