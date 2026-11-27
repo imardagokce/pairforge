@@ -183,6 +183,7 @@ class Coder:
                 file_watcher=from_coder.file_watcher,
                 permission_policy=from_coder.permission_policy,
                 auto_compact_at=from_coder.auto_compact_at,
+                compact_prompts=from_coder.compact_prompts,
             )
             use_kwargs.update(update)  # override to complete the switch
             use_kwargs.update(kwargs)  # override passed kwargs
@@ -343,6 +344,7 @@ class Coder:
         auto_accept_architect=True,
         permission_policy=None,
         auto_compact_at=75,
+        compact_prompts=None,
     ):
         # Fill in a dummy Analytics if needed, but it is never .enable()'d
         self.analytics = analytics if analytics is not None else Analytics()
@@ -419,6 +421,12 @@ class Coder:
         self.dirty_commits = dirty_commits
         self.permission_policy = permission_policy
         self.auto_compact_at = auto_compact_at
+
+        if compact_prompts is None:
+            from aider.local_models import is_small_local_model
+
+            compact_prompts = is_small_local_model(main_model.name)
+        self.compact_prompts = compact_prompts
 
         self.dry_run = dry_run
         self.pretty = self.io.pretty
@@ -1248,28 +1256,32 @@ class Coder:
 
     def format_chat_chunks(self):
         self.choose_fence()
-        main_sys = self.fmt_system_prompt(self.gpt_prompts.main_system)
+        main_prompt = self.gpt_prompts.main_system
+        if self.compact_prompts and self.gpt_prompts.main_system_compact:
+            main_prompt = self.gpt_prompts.main_system_compact
+        main_sys = self.fmt_system_prompt(main_prompt)
         if self.main_model.system_prompt_prefix:
             main_sys = self.main_model.system_prompt_prefix + "\n" + main_sys
 
         example_messages = []
+        examples = [] if self.compact_prompts else self.gpt_prompts.example_messages
         if self.main_model.examples_as_sys_msg:
-            if self.gpt_prompts.example_messages:
+            if examples:
                 main_sys += "\n# Example conversations:\n\n"
-            for msg in self.gpt_prompts.example_messages:
+            for msg in examples:
                 role = msg["role"]
                 content = self.fmt_system_prompt(msg["content"])
                 main_sys += f"## {role.upper()}: {content}\n\n"
             main_sys = main_sys.strip()
         else:
-            for msg in self.gpt_prompts.example_messages:
+            for msg in examples:
                 example_messages.append(
                     dict(
                         role=msg["role"],
                         content=self.fmt_system_prompt(msg["content"]),
                     )
                 )
-            if self.gpt_prompts.example_messages:
+            if examples:
                 example_messages += [
                     dict(
                         role="user",

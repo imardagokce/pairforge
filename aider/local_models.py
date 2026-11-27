@@ -254,3 +254,13 @@ def apply_local_quickstart(args, io, discover=None):
         args.permission_mode = "auto"
 
     return True
+
+
+def is_small_local_model(name, max_billions=17):
+    """True for a local model whose name gives a size of max_billions parameters or fewer."""
+    if not name or not name.startswith(LOCAL_PREFIXES):
+        return False
+    size_match = _PARAM_SIZE_RE.search(name.split("/", 1)[1].lower())
+    if size_match is None:
+        return False
+    return float(size_match.group(1)) <= max_billions

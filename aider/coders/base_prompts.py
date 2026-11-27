@@ -1,6 +1,9 @@
 class CoderPrompts:
     system_reminder = ""
 
+    # Shorter main_system for small local models (compact_prompts); None keeps main_system.
+    main_system_compact = None
+
     files_content_gpt_edits = "I committed the changes with git hash {hash} & commit msg: {message}"
 
     files_content_gpt_edits_no_repo = "I updated the files."

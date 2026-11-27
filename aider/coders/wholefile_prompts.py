@@ -14,6 +14,12 @@ Once you understand the request you MUST:
 3. If changes are needed, output a copy of each file that needs changes.
 """
 
+    main_system_compact = """Act as an expert software developer.
+Take requests for changes to the supplied code. If the request is ambiguous, ask questions.
+{final_reminders}
+Explain any needed changes. If changes are needed, output a copy of each file that needs changes.
+"""
+
     example_messages = [
         dict(
             role="user",
