@@ -183,6 +183,7 @@ class Coder:
                 file_watcher=from_coder.file_watcher,
                 permission_policy=from_coder.permission_policy,
                 auto_compact_at=from_coder.auto_compact_at,
+                status_line=from_coder.status_line_enabled,
                 compact_prompts=from_coder.compact_prompts,
             )
             use_kwargs.update(update)  # override to complete the switch
@@ -345,6 +346,7 @@ class Coder:
         permission_policy=None,
         auto_compact_at=75,
         compact_prompts=None,
+        status_line=True,
     ):
         # Fill in a dummy Analytics if needed, but it is never .enable()'d
         self.analytics = analytics if analytics is not None else Analytics()
@@ -421,6 +423,7 @@ class Coder:
         self.dirty_commits = dirty_commits
         self.permission_policy = permission_policy
         self.auto_compact_at = auto_compact_at
+        self.status_line_enabled = status_line
 
         if compact_prompts is None:
             from aider.local_models import is_small_local_model
@@ -918,6 +921,58 @@ class Coder:
         if self.auto_copy_context:
             self.commands.cmd_copy_context()
 
+    def status_line(self):
+        """One-line summary shown under the prompt: model, context, effort, git.
+
+        Computed once per call; Coder.get_input calls it once per prompt.
+        """
+        parts = [self.main_model.name]
+
+        ctx = self._status_context()
+        if ctx:
+            parts.append(ctx)
+
+        effort = self._status_effort()
+        if effort:
+            parts.append(effort)
+
+        git = self._status_git()
+        if git:
+            parts.append(git)
+
+        return " | ".join(parts)
+
+    def _status_context(self):
+        try:
+            used = self.main_model.token_count(self.format_messages().all_messages())
+        except Exception:
+            return None
+        used_str = format_tokens(used)
+        max_input = self.main_model.info.get("max_input_tokens")
+        if not max_input:
+            return f"ctx {used_str}"
+        pct = int(round(100 * used / max_input))
+        return f"ctx {used_str}/{format_tokens(max_input)} ({pct}%)"
+
+    def _status_effort(self):
+        model = self.main_model
+        if model.auto_reasoning_effort:
+            if model.last_auto_effort:
+                return f"effort auto:{model.last_auto_effort}"
+            return "effort auto"
+        effort = model.get_reasoning_effort()
+        return f"effort {effort}" if effort else None
+
+    def _status_git(self):
+        if not self.repo:
+            return None
+        try:
+            branch = self.repo.repo.active_branch.name
+            dirty = self.repo.is_dirty()
+        except Exception:
+            return None
+        return f"git {branch}*" if dirty else f"git {branch}"
+
     def get_input(self):
         inchat_files = self.get_inchat_relative_files()
         read_only_files = [self.get_rel_fname(fname) for fname in self.abs_read_only_fnames]
@@ -930,6 +985,7 @@ class Coder:
             self.commands,
             self.abs_read_only_fnames,
             edit_format=edit_format,
+            status_line=self.status_line() if self.status_line_enabled else None,
         )
 
     def preproc_user_input(self, inp):

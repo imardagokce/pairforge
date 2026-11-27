@@ -528,6 +528,7 @@ class InputOutput:
         commands,
         abs_read_only_fnames=None,
         edit_format=None,
+        status_line=None,
     ):
         self.rule()
 
@@ -663,6 +664,7 @@ class InputOutput:
                         key_bindings=kb,
                         complete_while_typing=True,
                         prompt_continuation=get_continuation,
+                        bottom_toolbar=status_line,
                     )
                 else:
                     line = input(show)

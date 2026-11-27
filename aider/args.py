@@ -156,6 +156,15 @@ def get_parser(default_config_files, git_root):
         ),
     )
     group.add_argument(
+        "--status-line",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Show a status line (model, context use, effort, git) under the prompt"
+            " (default: True)"
+        ),
+    )
+    group.add_argument(
         "--thinking-tokens",
         type=str,
         help=(

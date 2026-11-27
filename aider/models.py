@@ -20,6 +20,7 @@ from aider import __version__
 from aider.dump import dump  # noqa: F401
 from aider.effort import AUTO, choose_reasoning_effort
 from aider.llm import litellm
+from aider.local_models import local_model_preset
 from aider.openrouter import OpenRouterModelManager
 from aider.sendchat import ensure_alternating_roles, sanity_check_messages
 from aider.utils import check_pip_install_extra
@@ -29,6 +30,22 @@ RETRY_TIMEOUT = 60
 request_timeout = 600
 
 DEFAULT_MODEL_NAME = "gpt-4o"
+
+
+def default_reasoning_effort(model):
+    """Reasoning effort to use when the user did not pass --reasoning-effort.
+
+    Returns "auto" when the model accepts a reasoning_effort setting or is a
+    local thinking model (local preset with reasoning_tag "think"); otherwise None.
+    """
+    if model.accepts_settings and "reasoning_effort" in model.accepts_settings:
+        return AUTO
+    preset = local_model_preset(model.name)
+    if preset and preset.get("reasoning_tag") == "think":
+        return AUTO
+    return None
+
+
 ANTHROPIC_BETA_HEADER = "prompt-caching-2024-07-31,pdfs-2024-09-25"
 
 OPENAI_MODELS = """

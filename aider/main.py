@@ -30,7 +30,7 @@ from aider.format_settings import format_settings, scrub_sensitive_info
 from aider.history import ChatSummary
 from aider.io import InputOutput
 from aider.llm import litellm  # noqa: F401; properly init litellm on launch
-from aider.models import ModelSettings
+from aider.models import ModelSettings, default_reasoning_effort
 from aider.onboarding import offer_openrouter_oauth, select_default_model
 from aider.permissions import PermissionPolicy, decline, is_declined, is_trusted, trust
 from aider.repo import ANY_GIT_ERROR, GitRepo
@@ -856,6 +856,11 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
             main_model.accepts_settings and "reasoning_effort" in main_model.accepts_settings
         ):
             main_model.set_reasoning_effort(args.reasoning_effort)
+    else:
+        # No explicit value: pick a default based on the model (see default_reasoning_effort)
+        default_effort = default_reasoning_effort(main_model)
+        if default_effort is not None:
+            main_model.set_reasoning_effort(default_effort)
 
     if args.thinking_tokens is not None:
         # Apply if check is disabled or model explicitly supports it
@@ -1023,6 +1028,7 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
             permission_policy=permission_policy,
             auto_compact_at=args.auto_compact_at,
             compact_prompts=args.compact_prompts,
+            status_line=args.status_line,
         )
     except UnknownEditFormat as err:
         io.tool_error(str(err))
