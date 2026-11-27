@@ -34,6 +34,7 @@ from rich.style import Style as RichStyle
 from rich.text import Text
 
 from aider.mdstream import MarkdownStream
+from aider.i18n import _, get_language
 
 from .dump import dump  # noqa: F401
 from .editor import pipe_editor
@@ -225,6 +226,41 @@ class AutoCompleter(Completer):
 
         for ins, pos, match in sorted(completions):
             yield Completion(ins, start_position=pos, display=match)
+
+
+def confirm_answers():
+    """Words accepted and labels shown for yes/no questions in the interface language."""
+    if get_language() == "tr":
+        return {
+            "words": {
+                "y": ["evet", "yes"],
+                "n": ["hayÄ±r", "hayir", "no"],
+                "a": ["tÃ¼mÃ¼", "tumu"],
+                "s": ["atla"],
+                "d": ["bir daha sorma"],
+            },
+            "labels": {
+                "y": "(E)vet",
+                "n": "(H)ayÄ±r",
+                "a": "(T)Ã¼mÃ¼",
+                "s": "(A)tla hepsi",
+                "d": "(B)ir daha sorma",
+            },
+            "default_yes": "Evet",
+            "default_no": "HayÄ±r",
+        }
+    return {
+        "words": {"y": ["yes"], "n": ["no"], "a": ["all"], "s": ["skip"], "d": ["don't"]},
+        "labels": {
+            "y": "(Y)es",
+            "n": "(N)o",
+            "a": "(A)ll",
+            "s": "(S)kip all",
+            "d": "(D)on't ask again",
+        },
+        "default_yes": "Yes",
+        "default_no": "No",
+    }
 
 
 class InputOutput:
@@ -539,7 +575,7 @@ class InputOutput:
         show = ""
         if rel_fnames:
             rel_read_only_fnames = [
-                get_rel_fname(fname, root) for fname in (abs_read_only_fnames or [])
+                get_rel_fname(fname, root) for fname in abs_read_only_fnames or []
             ]
             show = self.format_files_for_input(rel_fnames, rel_read_only_fnames)
 
@@ -840,20 +876,25 @@ class InputOutput:
         if group:
             allow_never = True
 
-        valid_responses = ["yes", "no", "skip", "all"]
-        options = " (Y)es/(N)o"
+        answers = confirm_answers()
+        offered = ["y", "n", "s", "a"]
+        if allow_never:
+            offered.append("d")
+        valid_responses = [word for code in offered for word in answers["words"][code]]
+
+        labels = answers["labels"]
+        options = f" {labels['y']}/{labels['n']}"
         if group:
             if not explicit_yes_required:
-                options += "/(A)ll"
-            options += "/(S)kip all"
+                options += f"/{labels['a']}"
+            options += f"/{labels['s']}"
         if allow_never:
-            options += "/(D)on't ask again"
-            valid_responses.append("don't")
+            options += f"/{labels['d']}"
 
         if default.lower().startswith("y"):
-            question += options + " [Yes]: "
+            question += options + f" [{answers['default_yes']}]: "
         elif default.lower().startswith("n"):
-            question += options + " [No]: "
+            question += options + f" [{answers['default_no']}]: "
         else:
             question += options + f" [{default}]: "
 
@@ -870,10 +911,13 @@ class InputOutput:
 
         style = self._get_style()
 
-        def is_valid_response(text):
-            if not text:
-                return True
-            return text.lower() in valid_responses
+        def answer_code(text):
+            """Internal code (y/n/s/a/d) for a typed answer, or None."""
+            text = text.strip().lower()
+            for code in offered:
+                if any(word.startswith(text) for word in answers["words"][code]):
+                    return code
+            return None
 
         if self.yes is True:
             res = "n" if explicit_yes_required else "y"
@@ -901,12 +945,14 @@ class InputOutput:
                 if not res:
                     res = default
                     break
-                res = res.lower()
-                good = any(valid_response.startswith(res) for valid_response in valid_responses)
-                if good:
+                code = answer_code(res)
+                if code:
+                    res = code
                     break
 
-                error_message = f"Please answer with one of: {', '.join(valid_responses)}"
+                error_message = _("Please answer with one of: {answers}").format(
+                    answers=", ".join(valid_responses)
+                )
                 self.tool_error(error_message)
 
         res = res.lower()[0]

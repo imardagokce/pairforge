@@ -18,7 +18,7 @@ import shtab
 from dotenv import load_dotenv
 from prompt_toolkit.enums import EditingMode
 
-from aider import __version__, local_models, models, urls, utils
+from aider import __version__, i18n, local_models, models, urls, utils
 from aider.analytics import Analytics
 from aider.args import get_parser
 from aider.coders import Coder
@@ -434,6 +434,11 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
 
     # Parse again to include any arguments that might have been defined in .env
     args = parser.parse_args(argv)
+
+    # Interface language first, so every message below is in it
+    ui_language = i18n.set_language(i18n.detect_language(args.ui_language))
+    if args.chat_language is None and ui_language != "en":
+        args.chat_language = i18n.LANGUAGE_NAMES[ui_language]
 
     if args.shell_completions:
         # Ensure parser.prog is set for shtab, though it should be by default

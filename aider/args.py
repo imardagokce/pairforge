@@ -736,6 +736,16 @@ def get_parser(default_config_files, git_root):
         help="Specify the language to use in the chat (default: None, uses system settings)",
     )
     group.add_argument(
+        "--ui-language",
+        metavar="LANG",
+        default=None,
+        help=(
+            "Language of pairforge's own messages: en or tr (default: PAIRFORGE_LANG, then the"
+            " system language). When it is tr and --chat-language is not set, the model also"
+            " answers in Turkish"
+        ),
+    )
+    group.add_argument(
         "--commit-language",
         metavar="COMMIT_LANGUAGE",
         default=None,
