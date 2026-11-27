@@ -1,3 +1,5 @@
+from aider.i18n import _
+
 from .architect_prompts import ArchitectPrompts
 from .ask_coder import AskCoder
 from .base_coder import Coder
@@ -15,7 +17,7 @@ class ArchitectCoder(AskCoder):
             return
 
         if not self.auto_accept_architect and not (
-            self.auto_approved("edit the files") or self.io.confirm_ask("Edit the files?")
+            self.auto_approved(_("edit the files")) or self.io.confirm_ask(_("Edit the files?"))
         ):
             return
 

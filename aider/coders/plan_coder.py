@@ -1,5 +1,7 @@
 import re
 
+from aider.i18n import _
+
 from .ask_coder import AskCoder
 from .base_coder import Coder
 from .plan_prompts import PlanPrompts
@@ -75,35 +77,43 @@ def run_plan(coder, request):
 
     steps = parse_plan_steps(reply)
     if not steps:
-        io.tool_warning("The planner returned no numbered steps; nothing was run.")
+        io.tool_warning(_("The planner returned no numbered steps; nothing was run."))
         return False
 
     total = len(steps)
-    io.tool_output(f"Plan ({total} steps):")
+    io.tool_output(_("Plan ({total} steps):").format(total=total))
     for i, step in enumerate(steps, 1):
-        io.tool_output(f"[ ] {i}. {step}")
+        io.tool_output(_("[ ] {i}. {step}").format(i=i, step=step))
 
-    approved = coder.auto_approved(f"run the {total}-step plan")
-    if not (approved or io.confirm_ask("Run this plan?")):
-        io.tool_output("Plan not run.")
+    approved = coder.auto_approved(_("run the {total}-step plan").format(total=total))
+    if not (approved or io.confirm_ask(_("Run this plan?"))):
+        io.tool_output(_("Plan not run."))
         return False
 
     current = 0
     try:
         for i, step in enumerate(steps, 1):
             current = i
-            io.tool_output(f"Step {i}/{total}: {step}")
+            io.tool_output(_("Step {i}/{total}: {step}").format(i=i, total=total, step=step))
             editor = _make_editor(coder)
             editor.run(with_message=_step_message(steps, i, step), preproc=False)
             coder.total_cost = editor.total_cost
             coder.aider_commit_hashes = editor.aider_commit_hashes
-            io.tool_output(f"[x] {i}. {step}")
+            io.tool_output(_("[x] {i}. {step}").format(i=i, step=step))
     except KeyboardInterrupt:
-        io.tool_warning(f"Plan stopped by user after {current - 1} of {total} steps.")
+        io.tool_warning(
+            _("Plan stopped by user after {done} of {total} steps.").format(
+                done=current - 1, total=total
+            )
+        )
         return False
     except Exception as err:
-        io.tool_error(f"Step {current}/{total} failed: {err}. Plan stopped.")
+        io.tool_error(
+            _("Step {current}/{total} failed: {err}. Plan stopped.").format(
+                current=current, total=total, err=err
+            )
+        )
         return False
 
-    io.tool_output(f"Plan complete: {total} steps done.")
+    io.tool_output(_("Plan complete: {total} steps done.").format(total=total))
     return True

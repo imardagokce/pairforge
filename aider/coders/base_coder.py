@@ -33,6 +33,7 @@ from aider.analytics import Analytics
 from aider.commands import Commands, SwitchCoder
 from aider.exceptions import LiteLLMExceptions
 from aider.history import ChatSummary
+from aider.i18n import _
 from aider.io import ConfirmGroup, InputOutput
 from aider.linter import Linter
 from aider.llm import litellm
@@ -165,7 +166,7 @@ class Coder:
                 except ValueError:
                     # If summarization fails, keep the original messages and warn the user
                     io.tool_warning(
-                        "Chat history summarization failed, continuing with full history"
+                        _("Chat history summarization failed, continuing with full history")
                     )
 
             # Bring along context from the old Coder
@@ -218,38 +219,38 @@ class Coder:
         weak_model = main_model.weak_model
 
         if weak_model is not main_model:
-            prefix = "Main model"
+            prefix = _("Main model: {model} with {edit_format} edit format")
         else:
-            prefix = "Model"
+            prefix = _("Model: {model} with {edit_format} edit format")
 
-        output = f"{prefix}: {main_model.name} with {self.edit_format} edit format"
+        output = prefix.format(model=main_model.name, edit_format=self.edit_format)
 
         # Check for thinking token budget
         thinking_tokens = main_model.get_thinking_tokens()
         if thinking_tokens:
-            output += f", {thinking_tokens} think tokens"
+            output += _(", {tokens} think tokens").format(tokens=thinking_tokens)
 
         # Check for reasoning effort
         reasoning_effort = main_model.get_reasoning_effort()
         if reasoning_effort:
-            output += f", reasoning {reasoning_effort}"
+            output += _(", reasoning {effort}").format(effort=reasoning_effort)
 
         if self.add_cache_headers or main_model.caches_by_default:
-            output += ", prompt cache"
+            output += _(", prompt cache")
         if main_model.info.get("supports_assistant_prefill"):
-            output += ", infinite output"
+            output += _(", infinite output")
 
         lines.append(output)
 
         if self.edit_format == "architect":
-            output = (
-                f"Editor model: {main_model.editor_model.name} with"
-                f" {main_model.editor_edit_format} edit format"
+            output = _("Editor model: {model} with {edit_format} edit format").format(
+                model=main_model.editor_model.name,
+                edit_format=main_model.editor_edit_format,
             )
             lines.append(output)
 
         if weak_model is not main_model:
-            output = f"Weak model: {weak_model.name}"
+            output = _("Weak model: {model}").format(model=weak_model.name)
             lines.append(output)
 
         # Repo
@@ -257,45 +258,57 @@ class Coder:
             rel_repo_dir = self.repo.get_rel_repo_dir()
             num_files = len(self.repo.get_tracked_files())
 
-            lines.append(f"Git repo: {rel_repo_dir} with {num_files:,} files")
+            lines.append(
+                _("Git repo: {repo_dir} with {num_files:,} files").format(
+                    repo_dir=rel_repo_dir, num_files=num_files
+                )
+            )
             if num_files > 1000:
                 lines.append(
-                    "Warning: For large repos, consider using --subtree-only and .aiderignore"
+                    _("Warning: For large repos, consider using --subtree-only and .aiderignore")
                 )
-                lines.append(f"See: {urls.large_repos}")
+                lines.append(_("See: {url}").format(url=urls.large_repos))
         else:
-            lines.append("Git repo: none")
+            lines.append(_("Git repo: none"))
 
         # Repo-map
         if self.repo_map:
             map_tokens = self.repo_map.max_map_tokens
             if map_tokens > 0:
                 refresh = self.repo_map.refresh
-                lines.append(f"Repo-map: using {map_tokens} tokens, {refresh} refresh")
+                lines.append(
+                    _("Repo-map: using {map_tokens} tokens, {refresh} refresh").format(
+                        map_tokens=map_tokens, refresh=refresh
+                    )
+                )
                 max_map_tokens = self.main_model.get_repo_map_tokens() * 2
                 if map_tokens > max_map_tokens:
                     lines.append(
-                        f"Warning: map-tokens > {max_map_tokens} is not recommended. Too much"
-                        " irrelevant code can confuse LLMs."
+                        _(
+                            "Warning: map-tokens > {max_map_tokens} is not recommended. Too much"
+                            " irrelevant code can confuse LLMs."
+                        ).format(max_map_tokens=max_map_tokens)
                     )
             else:
-                lines.append("Repo-map: disabled because map_tokens == 0")
+                lines.append(_("Repo-map: disabled because map_tokens == 0"))
         else:
-            lines.append("Repo-map: disabled")
+            lines.append(_("Repo-map: disabled"))
 
         # Files
         for fname in self.get_inchat_relative_files():
-            lines.append(f"Added {fname} to the chat.")
+            lines.append(_("Added {fname} to the chat.").format(fname=fname))
 
         for fname in self.abs_read_only_fnames:
             rel_fname = self.get_rel_fname(fname)
-            lines.append(f"Added {rel_fname} to the chat (read-only).")
+            lines.append(_("Added {fname} to the chat (read-only).").format(fname=rel_fname))
 
         if self.done_messages:
-            lines.append("Restored previous conversation history.")
+            lines.append(_("Restored previous conversation history."))
 
         if self.io.multiline_mode:
-            lines.append("Multiline mode: Enabled. Enter inserts newline, Alt-Enter submits text")
+            lines.append(
+                _("Multiline mode: Enabled. Enter inserts newline, Alt-Enter submits text")
+            )
 
         return lines
 
@@ -468,22 +481,30 @@ class Coder:
         for fname in fnames:
             fname = Path(fname)
             if self.repo and self.repo.git_ignored_file(fname) and not self.add_gitignore_files:
-                self.io.tool_warning(f"Skipping {fname} that matches gitignore spec.")
+                self.io.tool_warning(
+                    _("Skipping {fname} that matches gitignore spec.").format(fname=fname)
+                )
                 continue
 
             if self.repo and self.repo.ignored_file(fname):
-                self.io.tool_warning(f"Skipping {fname} that matches aiderignore spec.")
+                self.io.tool_warning(
+                    _("Skipping {fname} that matches aiderignore spec.").format(fname=fname)
+                )
                 continue
 
             if not fname.exists():
                 if utils.touch_file(fname):
-                    self.io.tool_output(f"Creating empty file {fname}")
+                    self.io.tool_output(_("Creating empty file {fname}").format(fname=fname))
                 else:
-                    self.io.tool_warning(f"Can not create {fname}, skipping.")
+                    self.io.tool_warning(
+                        _("Can not create {fname}, skipping.").format(fname=fname)
+                    )
                     continue
 
             if not fname.is_file():
-                self.io.tool_warning(f"Skipping {fname} that is not a normal file.")
+                self.io.tool_warning(
+                    _("Skipping {fname} that is not a normal file.").format(fname=fname)
+                )
                 continue
 
             fname = str(fname.resolve())
@@ -501,7 +522,11 @@ class Coder:
                 if os.path.exists(abs_fname):
                     self.abs_read_only_fnames.add(abs_fname)
                 else:
-                    self.io.tool_warning(f"Error: Read-only file {fname} does not exist. Skipping.")
+                    self.io.tool_warning(
+                        _("Error: Read-only file {fname} does not exist. Skipping.").format(
+                            fname=fname
+                        )
+                    )
 
         if map_tokens is None:
             use_repo_map = main_model.use_repo_map
@@ -562,7 +587,7 @@ class Coder:
                 Draft7Validator.check_schema(function)
 
             if self.verbose:
-                self.io.tool_output("JSON Schema:")
+                self.io.tool_output(_("JSON Schema:"))
                 self.io.tool_output(json.dumps(self.functions, indent=4))
 
     def setup_lint_cmds(self, lint_cmds):
@@ -625,7 +650,9 @@ class Coder:
 
             if content is None:
                 relative_fname = self.get_rel_fname(fname)
-                self.io.tool_warning(f"Dropping {relative_fname} from the chat.")
+                self.io.tool_warning(
+                    _("Dropping {fname} from the chat.").format(fname=relative_fname)
+                )
                 self.abs_fnames.remove(fname)
             else:
                 yield fname, content
@@ -652,8 +679,9 @@ class Coder:
         else:
             self.fence = self.fences[0]
             self.io.tool_warning(
-                "Unable to find a fencing strategy! Falling back to:"
-                f" {self.fence[0]}...{self.fence[1]}"
+                _("Unable to find a fencing strategy! Falling back to: {open}...{close}").format(
+                    open=self.fence[0], close=self.fence[1]
+                )
             )
 
         return
@@ -958,10 +986,10 @@ class Coder:
         model = self.main_model
         if model.auto_reasoning_effort:
             if model.last_auto_effort:
-                return f"effort auto:{model.last_auto_effort}"
-            return "effort auto"
+                return _("effort auto:{effort}").format(effort=model.last_auto_effort)
+            return _("effort auto")
         effort = model.get_reasoning_effort()
-        return f"effort {effort}" if effort else None
+        return _("effort {effort}").format(effort=effort) if effort else None
 
     def _status_git(self):
         if not self.repo:
@@ -1009,7 +1037,7 @@ class Coder:
         previous_auto_effort = self.main_model.last_auto_effort
         auto_effort = self.main_model.apply_auto_reasoning_effort(user_message)
         if auto_effort and auto_effort != previous_auto_effort:
-            self.io.tool_output(f"Auto effort: {auto_effort}")
+            self.io.tool_output(_("Auto effort: {effort}").format(effort=auto_effort))
 
         if preproc:
             message = self.preproc_user_input(user_message)
@@ -1024,7 +1052,11 @@ class Coder:
                 break
 
             if self.num_reflections >= self.max_reflections:
-                self.io.tool_warning(f"Only {self.max_reflections} reflections allowed, stopping.")
+                self.io.tool_warning(
+                    _("Only {count} reflections allowed, stopping.").format(
+                        count=self.max_reflections
+                    )
+                )
                 return
 
             self.num_reflections += 1
@@ -1060,8 +1092,9 @@ class Coder:
         for url in urls:
             if url not in self.rejected_urls:
                 url = url.rstrip(".',\"")
-                if self.auto_approved(f"add URL {url} to the chat") or self.io.confirm_ask(
-                    "Add URL to the chat?", subject=url, group=group, allow_never=True
+                description = _("add URL {url} to the chat").format(url=url)
+                if self.auto_approved(description) or self.io.confirm_ask(
+                    _("Add URL to the chat?"), subject=url, group=group, allow_never=True
                 ):
                     inp += "\n\n"
                     inp += self.commands.cmd_web(url, return_content=True)
@@ -1082,7 +1115,7 @@ class Coder:
             self.event("exit", reason="Control-C")
             sys.exit()
 
-        self.io.tool_warning("\n\n^C again to exit")
+        self.io.tool_warning(_("\n\n^C again to exit"))
 
         self.last_keyboard_interrupt = now
 
@@ -1093,7 +1126,7 @@ class Coder:
         self.summarize_end()
 
         if self.verbose:
-            self.io.tool_output("Starting to summarize chat history.")
+            self.io.tool_output(_("Starting to summarize chat history."))
 
         self.summarizer_thread = threading.Thread(target=self.summarize_worker)
         self.summarizer_thread.start()
@@ -1106,7 +1139,7 @@ class Coder:
             self.io.tool_warning(err.args[0])
 
         if self.verbose:
-            self.io.tool_output("Finished summarizing chat history.")
+            self.io.tool_output(_("Finished summarizing chat history."))
 
     def summarize_end(self):
         if self.summarizer_thread is None:
@@ -1468,7 +1501,7 @@ class Coder:
                         **kwargs,
                     )
                 except Exception as err:
-                    self.io.tool_warning(f"Cache warming error: {str(err)}")
+                    self.io.tool_warning(_("Cache warming error: {err}").format(err=str(err)))
                     continue
 
                 cache_hit_tokens = getattr(
@@ -1476,7 +1509,11 @@ class Coder:
                 ) or getattr(completion.usage, "cache_read_input_tokens", 0)
 
                 if self.verbose:
-                    self.io.tool_output(f"Warmed {format_tokens(cache_hit_tokens)} cached tokens.")
+                    self.io.tool_output(
+                        _("Warmed {tokens} cached tokens.").format(
+                            tokens=format_tokens(cache_hit_tokens)
+                        )
+                    )
 
         self.cache_warming_thread = threading.Timer(0, warm_cache_worker)
         self.cache_warming_thread.daemon = True
@@ -1509,26 +1546,34 @@ class Coder:
 
         self.summarize_end()
         self.io.tool_output(
-            f"Context is {total * 100 // window}% full ({total:,} of {window:,} tokens);"
-            " summarizing the chat history..."
+            _(
+                "Context is {percent}% full ({total:,} of {window:,} tokens);"
+                " summarizing the chat history..."
+            ).format(percent=total * 100 // window, total=total, window=window)
         )
         try:
             summary = self.summarizer.summarize(self.done_messages, max_tokens=budget)
         except Exception as err:
-            self.io.tool_warning(f"Could not summarize the chat history: {err}")
+            self.io.tool_warning(
+                _("Could not summarize the chat history: {err}").format(err=err)
+            )
             return False
 
         new_tokens = self.count_message_tokens(summary)
         if new_tokens >= history_tokens:
             self.io.tool_warning(
-                f"The summary ({new_tokens:,} tokens) was not smaller than the chat history"
-                f" ({history_tokens:,} tokens); keeping the history as it is."
+                _(
+                    "The summary ({new_tokens:,} tokens) was not smaller than the chat history"
+                    " ({history_tokens:,} tokens); keeping the history as it is."
+                ).format(new_tokens=new_tokens, history_tokens=history_tokens)
             )
             return False
 
         self.done_messages = summary
         self.io.tool_output(
-            f"Chat history summarized: {history_tokens:,} -> {new_tokens:,} tokens."
+            _("Chat history summarized: {history_tokens:,} -> {new_tokens:,} tokens.").format(
+                history_tokens=history_tokens, new_tokens=new_tokens
+            )
         )
         return True
 
@@ -1548,21 +1593,29 @@ class Coder:
 
         if max_input_tokens and input_tokens >= max_input_tokens:
             self.io.tool_error(
-                f"Your estimated chat context of {input_tokens:,} tokens exceeds the"
-                f" {max_input_tokens:,} token limit for {self.main_model.name}!"
+                _(
+                    "Your estimated chat context of {input_tokens:,} tokens exceeds the"
+                    " {max_input_tokens:,} token limit for {model}!"
+                ).format(
+                    input_tokens=input_tokens,
+                    max_input_tokens=max_input_tokens,
+                    model=self.main_model.name,
+                )
             )
-            self.io.tool_output("To reduce the chat context:")
-            self.io.tool_output("- Use /drop to remove unneeded files from the chat")
-            self.io.tool_output("- Use /clear to clear the chat history")
-            self.io.tool_output("- Break your code into smaller files")
+            self.io.tool_output(_("To reduce the chat context:"))
+            self.io.tool_output(_("- Use /drop to remove unneeded files from the chat"))
+            self.io.tool_output(_("- Use /clear to clear the chat history"))
+            self.io.tool_output(_("- Break your code into smaller files"))
             self.io.tool_output(
-                "It's probably safe to try and send the request, most providers won't charge if"
-                " the context limit is exceeded."
+                _(
+                    "It's probably safe to try and send the request, most providers"
+                    " won't charge if the context limit is exceeded."
+                )
             )
 
             if not (
-                self.auto_approved("send the request anyway")
-                or self.io.confirm_ask("Try to proceed anyway?")
+                self.auto_approved(_("send the request anyway"))
+                or self.io.confirm_ask(_("Try to proceed anyway?"))
             ):
                 return False
         return True
@@ -1637,7 +1690,9 @@ class Coder:
                     else:
                         self.io.tool_error(err_msg)
 
-                    self.io.tool_output(f"Retrying in {retry_delay:.1f} seconds...")
+                    self.io.tool_output(
+                        _("Retrying in {delay:.1f} seconds...").format(delay=retry_delay)
+                    )
                     time.sleep(retry_delay)
                     continue
                 except KeyboardInterrupt:
@@ -1755,8 +1810,8 @@ class Coder:
             self.auto_commit(edited, context="Ran the linter")
             self.lint_outcome = not lint_errors
             if lint_errors:
-                ok = self.auto_approved("attempt to fix lint errors") or self.io.confirm_ask(
-                    "Attempt to fix lint errors?"
+                ok = self.auto_approved(_("attempt to fix lint errors")) or self.io.confirm_ask(
+                    _("Attempt to fix lint errors?")
                 )
                 if ok:
                     self.reflected_message = lint_errors
@@ -1773,8 +1828,8 @@ class Coder:
             test_errors = self.commands.cmd_test(self.test_cmd)
             self.test_outcome = not test_errors
             if test_errors:
-                ok = self.auto_approved("attempt to fix test errors") or self.io.confirm_ask(
-                    "Attempt to fix test errors?"
+                ok = self.auto_approved(_("attempt to fix test errors")) or self.io.confirm_ask(
+                    _("Attempt to fix test errors?")
                 )
                 if ok:
                     self.reflected_message = test_errors
@@ -1798,39 +1853,53 @@ class Coder:
 
         out_err = ""
         if output_tokens >= max_output_tokens * fudge:
-            out_err = " -- possibly exceeded output limit!"
+            out_err = _(" -- possibly exceeded output limit!")
 
         inp_err = ""
         if input_tokens >= max_input_tokens * fudge:
-            inp_err = " -- possibly exhausted context window!"
+            inp_err = _(" -- possibly exhausted context window!")
 
         tot_err = ""
         if total_tokens >= max_input_tokens * fudge:
-            tot_err = " -- possibly exhausted context window!"
+            tot_err = _(" -- possibly exhausted context window!")
 
         res = ["", ""]
-        res.append(f"Model {self.main_model.name} has hit a token limit!")
-        res.append("Token counts below are approximate.")
+        res.append(_("Model {model} has hit a token limit!").format(model=self.main_model.name))
+        res.append(_("Token counts below are approximate."))
         res.append("")
-        res.append(f"Input tokens: ~{input_tokens:,} of {max_input_tokens:,}{inp_err}")
-        res.append(f"Output tokens: ~{output_tokens:,} of {max_output_tokens:,}{out_err}")
-        res.append(f"Total tokens: ~{total_tokens:,} of {max_input_tokens:,}{tot_err}")
+        res.append(
+            _("Input tokens: ~{input_tokens:,} of {max_input_tokens:,}{inp_err}").format(
+                input_tokens=input_tokens, max_input_tokens=max_input_tokens, inp_err=inp_err
+            )
+        )
+        res.append(
+            _("Output tokens: ~{output_tokens:,} of {max_output_tokens:,}{out_err}").format(
+                output_tokens=output_tokens,
+                max_output_tokens=max_output_tokens,
+                out_err=out_err,
+            )
+        )
+        res.append(
+            _("Total tokens: ~{total_tokens:,} of {max_input_tokens:,}{tot_err}").format(
+                total_tokens=total_tokens, max_input_tokens=max_input_tokens, tot_err=tot_err
+            )
+        )
 
         if output_tokens >= max_output_tokens:
             res.append("")
-            res.append("To reduce output tokens:")
-            res.append("- Ask for smaller changes in each request.")
-            res.append("- Break your code into smaller source files.")
+            res.append(_("To reduce output tokens:"))
+            res.append(_("- Ask for smaller changes in each request."))
+            res.append(_("- Break your code into smaller source files."))
             if "diff" not in self.main_model.edit_format:
-                res.append("- Use a stronger model that can return diffs.")
+                res.append(_("- Use a stronger model that can return diffs."))
 
         if input_tokens >= max_input_tokens or total_tokens >= max_input_tokens:
             res.append("")
-            res.append("To reduce input tokens:")
-            res.append("- Use /tokens to see token usage.")
-            res.append("- Use /drop to remove unneeded files from the chat session.")
-            res.append("- Use /clear to clear the chat history.")
-            res.append("- Break your code into smaller source files.")
+            res.append(_("To reduce input tokens:"))
+            res.append(_("- Use /tokens to see token usage."))
+            res.append(_("- Use /drop to remove unneeded files from the chat session."))
+            res.append(_("- Use /clear to clear the chat history."))
+            res.append(_("- Break your code into smaller source files."))
 
         res = "".join([line + "\n" for line in res])
         self.io.tool_error(res)
@@ -1936,7 +2005,9 @@ class Coder:
             if decision == "add":
                 self.add_rel_fname(rel_fname)
                 added_fnames.append(rel_fname)
-                self.io.tool_output(f"Auto-added {rel_fname} (permission mode: auto)")
+                self.io.tool_output(
+                    _("Auto-added {fname} (permission mode: auto)").format(fname=rel_fname)
+                )
             elif outline:
                 self.ignore_mentions.add(rel_fname)
                 self.mention_outlines.append(
@@ -1945,11 +2016,13 @@ class Coder:
                     )
                 )
                 self.io.tool_output(
-                    f"{rel_fname} is too large to add in full ({tokens:,} tokens);"
-                    " sent an outline instead. Use /add to edit it."
+                    _(
+                        "{fname} is too large to add in full ({tokens:,} tokens);"
+                        " sent an outline instead. Use /add to edit it."
+                    ).format(fname=rel_fname, tokens=tokens)
                 )
             elif self.io.confirm_ask(
-                "Add file to the chat?", subject=rel_fname, group=group, allow_never=True
+                _("Add file to the chat?"), subject=rel_fname, group=group, allow_never=True
             ):
                 self.add_rel_fname(rel_fname)
                 added_fnames.append(rel_fname)
@@ -1972,7 +2045,7 @@ class Coder:
         policy = getattr(self, "permission_policy", None)
         if not (policy and policy.auto_allows_action()):
             return False
-        self.io.tool_output(f"Auto-approved: {description}")
+        self.io.tool_output(_("Auto-approved: {description}").format(description=description))
         return True
 
     def auto_mention_decision(self, rel_fname):
@@ -2229,7 +2302,9 @@ class Coder:
                 yield text
 
         if not received_content:
-            self.io.tool_warning("Empty response received from LLM. Check your provider account?")
+            self.io.tool_warning(
+                _("Empty response received from LLM. Check your provider account?")
+            )
 
     def live_incremental_response(self, final):
         show_resp = self.render_incremental_response(final)
@@ -2277,13 +2352,21 @@ class Coder:
 
         self.message_tokens_received += completion_tokens
 
-        tokens_report = f"Tokens: {format_tokens(self.message_tokens_sent)} sent"
+        tokens_report = _("Tokens: {sent} sent").format(
+            sent=format_tokens(self.message_tokens_sent)
+        )
 
         if cache_write_tokens:
-            tokens_report += f", {format_tokens(cache_write_tokens)} cache write"
+            tokens_report += _(", {tokens} cache write").format(
+                tokens=format_tokens(cache_write_tokens)
+            )
         if cache_hit_tokens:
-            tokens_report += f", {format_tokens(cache_hit_tokens)} cache hit"
-        tokens_report += f", {format_tokens(self.message_tokens_received)} received."
+            tokens_report += _(", {tokens} cache hit").format(
+                tokens=format_tokens(cache_hit_tokens)
+            )
+        tokens_report += _(", {tokens} received.").format(
+            tokens=format_tokens(self.message_tokens_received)
+        )
 
         if not self.main_model.info.get("input_cost_per_token"):
             self.usage_report = tokens_report
@@ -2312,9 +2395,8 @@ class Coder:
             else:
                 return f"{value:.{max(2, 2 - int(math.log10(magnitude)))}f}"
 
-        cost_report = (
-            f"Cost: ${format_cost(self.message_cost)} message,"
-            f" ${format_cost(self.total_cost)} session."
+        cost_report = _("Cost: ${message_cost} message, ${total_cost} session.").format(
+            message_cost=format_cost(self.message_cost), total_cost=format_cost(self.total_cost)
         )
 
         if cache_hit_tokens and cache_write_tokens:
@@ -2442,7 +2524,7 @@ class Coder:
         # if not fullp.stat().st_size:
         #     return
 
-        self.io.tool_output(f"Committing {path} before applying edits.")
+        self.io.tool_output(_("Committing {path} before applying edits.").format(path=path))
         self.need_commit_before_edits.add(path)
 
     def allowed_to_edit(self, path):
@@ -2457,19 +2539,23 @@ class Coder:
             return True
 
         if self.repo and self.repo.git_ignored_file(path):
-            self.io.tool_warning(f"Skipping edits to {path} that matches gitignore spec.")
+            self.io.tool_warning(
+                _("Skipping edits to {path} that matches gitignore spec.").format(path=path)
+            )
             return
 
         if not Path(full_path).exists():
             if not self.auto_permission_allows(full_path) and not self.io.confirm_ask(
-                "Create new file?", subject=path
+                _("Create new file?"), subject=path
             ):
-                self.io.tool_output(f"Skipping edits to {path}")
+                self.io.tool_output(_("Skipping edits to {path}").format(path=path))
                 return
 
             if not self.dry_run:
                 if not utils.touch_file(full_path):
-                    self.io.tool_error(f"Unable to create {path}, skipping edits.")
+                    self.io.tool_error(
+                        _("Unable to create {path}, skipping edits.").format(path=path)
+                    )
                     return
 
                 # Seems unlikely that we needed to create the file, but it was
@@ -2483,10 +2569,10 @@ class Coder:
             return True
 
         if not self.auto_permission_allows(full_path) and not self.io.confirm_ask(
-            "Allow edits to file that has not been added to the chat?",
+            _("Allow edits to file that has not been added to the chat?"),
             subject=path,
         ):
-            self.io.tool_output(f"Skipping edits to {path}")
+            self.io.tool_output(_("Skipping edits to {path}").format(path=path))
             return
 
         if need_to_add and self.auto_commits:
@@ -2521,7 +2607,9 @@ class Coder:
         if tokens < warn_number_of_tokens:
             return
 
-        self.io.tool_warning("Warning: it's best to only add files that need changes to the chat.")
+        self.io.tool_warning(
+            _("Warning: it's best to only add files that need changes to the chat.")
+        )
         self.io.tool_warning(urls.edit_errors)
         self.warning_given = True
 
@@ -2566,7 +2654,7 @@ class Coder:
 
             err = err.args[0]
 
-            self.io.tool_error("The LLM did not conform to the edit format.")
+            self.io.tool_error(_("The LLM did not conform to the edit format."))
             self.io.tool_output(urls.edit_errors)
             self.io.tool_output()
             self.io.tool_output(str(err))
@@ -2579,7 +2667,7 @@ class Coder:
             self.io.tool_error(str(err))
             return edited
         except Exception as err:
-            self.io.tool_error("Exception while updating files:")
+            self.io.tool_error(_("Exception while updating files:"))
             self.io.tool_error(str(err), strip=False)
 
             traceback.print_exc()
@@ -2589,9 +2677,11 @@ class Coder:
 
         for path in edited:
             if self.dry_run:
-                self.io.tool_output(f"Did not apply edit to {path} (--dry-run)")
+                self.io.tool_output(
+                    _("Did not apply edit to {path} (--dry-run)").format(path=path)
+                )
             else:
-                self.io.tool_output(f"Applied edit to {path}")
+                self.io.tool_output(_("Applied edit to {path}").format(path=path))
 
         return edited
 
@@ -2617,8 +2707,10 @@ class Coder:
 
         self.io.malformed_edit_fallback_used = True
         self.io.tool_warning(
-            "The model produced malformed edits twice; switching to the whole edit format"
-            " for this session."
+            _(
+                "The model produced malformed edits twice; switching to the whole edit format"
+                " for this session."
+            )
         )
         raise SwitchCoder(
             edit_format="whole",
@@ -2681,7 +2773,7 @@ class Coder:
 
             return self.gpt_prompts.files_content_gpt_no_edits
         except ANY_GIT_ERROR as err:
-            self.io.tool_error(f"Unable to commit: {str(err)}")
+            self.io.tool_error(_("Unable to commit: {err}").format(err=str(err)))
             return
 
     def show_auto_commit_outcome(self, res):
@@ -2696,7 +2788,9 @@ class Coder:
         if not self.commit_before_message:
             return
         if self.commit_before_message[-1] != self.repo.get_head_commit_sha():
-            self.io.tool_output("You can use /undo to undo and discard each aider commit.")
+            self.io.tool_output(
+                _("You can use /undo to undo and discard each aider commit.")
+            )
 
     def dirty_commit(self):
         if not self.need_commit_before_edits:
@@ -2742,7 +2836,7 @@ class Coder:
         command_count = sum(
             1 for cmd in commands if cmd.strip() and not cmd.strip().startswith("#")
         )
-        prompt = "Run shell command?" if command_count == 1 else "Run shell commands?"
+        prompt = _("Run shell command?") if command_count == 1 else _("Run shell commands?")
         if not self.auto_approved("; ".join(c.strip() for c in commands if c.strip())) and (
             not self.io.confirm_ask(
                 prompt,
@@ -2761,7 +2855,7 @@ class Coder:
                 continue
 
             self.io.tool_output()
-            self.io.tool_output(f"Running {command}")
+            self.io.tool_output(_("Running {command}").format(command=command))
             # Add the command to input history
             self.io.add_to_input_history(f"/run {command.strip()}")
             exit_status, output = run_cmd(command, error_print=self.io.tool_error, cwd=self.root)
@@ -2769,10 +2863,14 @@ class Coder:
                 accumulated_output += f"Output from {command}\n{output}\n"
 
         if accumulated_output.strip() and (
-            self.auto_approved("add command output to the chat")
-            or self.io.confirm_ask("Add command output to the chat?", allow_never=True)
+            self.auto_approved(_("add command output to the chat"))
+            or self.io.confirm_ask(_("Add command output to the chat?"), allow_never=True)
         ):
             num_lines = len(accumulated_output.strip().splitlines())
-            line_plural = "line" if num_lines == 1 else "lines"
-            self.io.tool_output(f"Added {num_lines} {line_plural} of output to the chat.")
+            line_plural = _("line") if num_lines == 1 else _("lines")
+            self.io.tool_output(
+                _("Added {count} {line_plural} of output to the chat.").format(
+                    count=num_lines, line_plural=line_plural
+                )
+            )
             return accumulated_output
