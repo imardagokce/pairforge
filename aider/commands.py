@@ -43,9 +43,11 @@ from .dump import dump  # noqa: F401
 
 
 class SwitchCoder(Exception):
-    def __init__(self, placeholder=None, **kwargs):
+    def __init__(self, placeholder=None, retry_message=None, **kwargs):
         self.kwargs = kwargs
         self.placeholder = placeholder
+        # If set, main re-runs this user message once with the new coder.
+        self.retry_message = retry_message
 
 
 class Commands:

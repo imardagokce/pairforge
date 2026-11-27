@@ -30,12 +30,13 @@ from rich.console import Console
 
 from aider import __version__, models, prompts, urls, utils
 from aider.analytics import Analytics
-from aider.commands import Commands
+from aider.commands import Commands, SwitchCoder
 from aider.exceptions import LiteLLMExceptions
 from aider.history import ChatSummary
 from aider.io import ConfirmGroup, InputOutput
 from aider.linter import Linter
 from aider.llm import litellm
+from aider.local_models import local_model_preset
 from aider.models import RETRY_TIMEOUT
 from aider.reasoning_tags import (
     REASONING_TAG,
@@ -494,6 +495,11 @@ class Coder:
         if map_tokens is None:
             use_repo_map = main_model.use_repo_map
             map_tokens = 1024
+            # Local models with a known context window get a repo map sized to it
+            # (5% of the window, clamped to 512..4096) so small windows are not flooded.
+            window = main_model.info.get("max_input_tokens") or 0
+            if window and local_model_preset(main_model.name) is not None:
+                map_tokens = min(4096, max(512, int(window * 0.05)))
         else:
             use_repo_map = map_tokens > 0
 
@@ -872,6 +878,8 @@ class Coder:
         self.aider_edited_files = set()
         self.reflected_message = None
         self.num_reflections = 0
+        self.malformed_edits_in_message = 0
+        self.current_user_message = None
         self.lint_outcome = None
         self.test_outcome = None
         self.shell_commands = []
@@ -932,6 +940,7 @@ class Coder:
 
     def run_one(self, user_message, preproc):
         self.init_before_message()
+        self.current_user_message = user_message
 
         previous_auto_effort = self.main_model.last_auto_effort
         auto_effort = self.main_model.apply_auto_reasoning_effort(user_message)
@@ -2495,6 +2504,7 @@ class Coder:
             self.io.tool_output(str(err))
 
             self.reflected_message = str(err)
+            self.maybe_fallback_to_whole_format()
             return edited
 
         except ANY_GIT_ERROR as err:
@@ -2516,6 +2526,36 @@ class Coder:
                 self.io.tool_output(f"Applied edit to {path}")
 
         return edited
+
+    def maybe_fallback_to_whole_format(self):
+        """Small local models often emit malformed edit blocks. After the second malformed
+        edit in one user message, switch to the "whole" edit format (once per session) and
+        retry the same user message. main() performs the switch and re-runs the message.
+        """
+        self.malformed_edits_in_message += 1
+        if self.malformed_edits_in_message < 2 or self.current_user_message is None:
+            return
+        if self.edit_format not in ("diff", "diff-fenced", "udiff", "patch", "editor-diff"):
+            return
+        if getattr(self.io, "malformed_edit_fallback_used", False):
+            return
+
+        name = self.main_model.name or ""
+        is_local = local_model_preset(name) is not None or name.startswith(
+            ("ollama/", "ollama_chat/", "lm_studio/")
+        )
+        if not is_local:
+            return
+
+        self.io.malformed_edit_fallback_used = True
+        self.io.tool_warning(
+            "The model produced malformed edits twice; switching to the whole edit format"
+            " for this session."
+        )
+        raise SwitchCoder(
+            edit_format="whole",
+            retry_message=self.current_user_message,
+        )
 
     def parse_partial_args(self):
         # dump(self.partial_response_function_call)
