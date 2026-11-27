@@ -575,9 +575,16 @@ class Commands:
         args = (args or "").strip()
         if not args:
             ctx = f"{context_size:,}" if context_size else "unknown"
+            percent = getattr(self.coder, "auto_compact_at", 0)
+            trigger = (
+                f"also when the whole prompt passes {percent}% of the context window"
+                if percent
+                else "whole-prompt trigger is off"
+            )
             self.io.tool_output(
                 f"Auto-summarize threshold: {summarizer.max_tokens:,} tokens"
-                f" (model context window: {ctx} tokens)."
+                f" (model context window: {ctx} tokens); {trigger}"
+                " (set with --auto-compact-at)."
             )
             return
 

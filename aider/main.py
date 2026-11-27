@@ -1026,6 +1026,7 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
             auto_accept_architect=args.auto_accept_architect,
             add_gitignore_files=args.add_gitignore_files,
             permission_policy=permission_policy,
+            auto_compact_at=args.auto_compact_at,
         )
     except UnknownEditFormat as err:
         io.tool_error(str(err))

@@ -24,8 +24,17 @@ class ChatSummary:
             sized.append((tokens, msg))
         return sized
 
-    def summarize(self, messages, depth=0):
-        messages = self.summarize_real(messages)
+    def summarize(self, messages, depth=0, max_tokens=None):
+        """Summarize messages to fit max_tokens (default: this summarizer's own limit)."""
+        if max_tokens is None:
+            messages = self.summarize_real(messages)
+        else:
+            saved = self.max_tokens
+            self.max_tokens = max_tokens
+            try:
+                messages = self.summarize_real(messages)
+            finally:
+                self.max_tokens = saved
         if messages and messages[-1]["role"] != "assistant":
             messages.append(dict(role="assistant", content="Ok."))
         return messages

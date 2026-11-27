@@ -1533,3 +1533,9 @@ class TestLocalQuickstartMain(TestCase):
 
     def test_local_without_servers_exits_with_error(self):
         self.assertEqual(self.run_main(["--local"], []), 1)
+
+    def test_auto_compact_at_defaults_to_75_and_can_be_set(self):
+        coder = self.run_main(["--model", "gpt-4o-mini"], self.SERVERS)
+        self.assertEqual(coder.auto_compact_at, 75)
+        coder = self.run_main(["--model", "gpt-4o-mini", "--auto-compact-at", "50"], self.SERVERS)
+        self.assertEqual(coder.auto_compact_at, 50)

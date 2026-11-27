@@ -181,6 +181,7 @@ class Coder:
                 total_tokens_received=from_coder.total_tokens_received,
                 file_watcher=from_coder.file_watcher,
                 permission_policy=from_coder.permission_policy,
+                auto_compact_at=from_coder.auto_compact_at,
             )
             use_kwargs.update(update)  # override to complete the switch
             use_kwargs.update(kwargs)  # override passed kwargs
@@ -340,6 +341,7 @@ class Coder:
         auto_copy_context=False,
         auto_accept_architect=True,
         permission_policy=None,
+        auto_compact_at=75,
     ):
         # Fill in a dummy Analytics if needed, but it is never .enable()'d
         self.analytics = analytics if analytics is not None else Analytics()
@@ -414,6 +416,7 @@ class Coder:
         self.auto_commits = auto_commits
         self.dirty_commits = dirty_commits
         self.permission_policy = permission_policy
+        self.auto_compact_at = auto_compact_at
 
         self.dry_run = dry_run
         self.pretty = self.io.pretty
@@ -1401,6 +1404,47 @@ class Coder:
 
         return chunks
 
+    def compact_for_context(self, messages):
+        """Summarize chat history when the whole prompt fills too much of the context window.
+
+        The trigger is auto_compact_at percent of max_input_tokens, measured over the full
+        prompt (system prompt, repo map, files and history), not just the history. The
+        history is summarized to whatever room the rest of the prompt leaves. Returns True
+        if the history was replaced, so the caller can rebuild the prompt.
+        """
+        percent = self.auto_compact_at or 0
+        window = self.main_model.info.get("max_input_tokens") or 0
+        if percent <= 0 or not window or not self.done_messages:
+            return False
+
+        total = self.main_model.token_count(messages) or 0
+        limit = int(window * percent / 100)
+        if total <= limit:
+            return False
+
+        history_tokens = self.main_model.token_count(self.done_messages) or 0
+        budget = max(limit - (total - history_tokens), 256)
+        if history_tokens <= budget:
+            return False
+
+        self.summarize_end()
+        self.io.tool_output(
+            f"Context is {total * 100 // window}% full ({total:,} of {window:,} tokens);"
+            " summarizing the chat history..."
+        )
+        try:
+            summary = self.summarizer.summarize(self.done_messages, max_tokens=budget)
+        except Exception as err:
+            self.io.tool_warning(f"Could not summarize the chat history: {err}")
+            return False
+
+        self.done_messages = summary
+        new_tokens = self.main_model.token_count(summary) or 0
+        self.io.tool_output(
+            f"Chat history summarized: {history_tokens:,} -> {new_tokens:,} tokens."
+        )
+        return True
+
     def check_tokens(self, messages):
         """Check if the messages will fit within the model's token limits."""
         input_tokens = self.main_model.token_count(messages)
@@ -1436,6 +1480,9 @@ class Coder:
 
         chunks = self.format_messages()
         messages = chunks.all_messages()
+        if self.compact_for_context(messages):
+            chunks = self.format_messages()
+            messages = chunks.all_messages()
         if not self.check_tokens(messages):
             return
         self.warm_cache(chunks)

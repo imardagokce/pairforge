@@ -25,7 +25,7 @@ What the inherited codebase already provides (found by mapping the source), so w
 
 ### 2. Automatic compaction
 **Goal:** long sessions stay usable without the user managing context.
-- [ ] Trigger compaction automatically at a configurable fraction of the context window, instead of only at a fixed history token limit. **Planned**
+- [x] Trigger compaction automatically at a configurable fraction of the context window, instead of only at a fixed history token limit. **Done** (`--auto-compact-at PERCENT`, default 75: before each send, if the whole prompt passes that share of the window, the history is summarized to the room left)
 - [x] A manual `/compact` command, plus a visible notice of what was summarized. **Done**
 - [x] `/autocompact [N | N% | default]` to set the auto-summarize threshold during a session. **Done**
 - [ ] Keep recent turns and file edits verbatim; summarize only older discussion. **Planned**

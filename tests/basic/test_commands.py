@@ -2290,6 +2290,18 @@ class TestCompactCommands(TestCase):
         self.assertIn("1,234", msg)
         self.assertIn("4,000", msg)
 
+    def test_cmd_autocompact_show_mentions_context_trigger(self):
+        commands, coder, io = self._make_commands()
+        coder.auto_compact_at = 60
+        with mock.patch.object(io, "tool_output") as tool_output:
+            commands.cmd_autocompact("")
+        self.assertIn("60% of the context window", tool_output.call_args[0][0])
+
+        coder.auto_compact_at = 0
+        with mock.patch.object(io, "tool_output") as tool_output:
+            commands.cmd_autocompact("")
+        self.assertIn("off", tool_output.call_args[0][0])
+
     def test_cmd_autocompact_set_tokens(self):
         commands, coder, io = self._make_commands()
         commands.cmd_autocompact("777")
