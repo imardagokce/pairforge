@@ -1,3 +1,4 @@
+import importlib.util
 import time
 import unittest
 from unittest.mock import MagicMock
@@ -6,8 +7,13 @@ from aider.commands import Commands
 from aider.io import InputOutput
 from aider.scrape import Scraper
 
+HAS_PLAYWRIGHT = importlib.util.find_spec("playwright") is not None
+
+needs_playwright = unittest.skipUnless(HAS_PLAYWRIGHT, "needs the aider-chat[playwright] extra")
+
 
 class TestScrape(unittest.TestCase):
+    @needs_playwright
     def test_scrape_self_signed_ssl(self):
         def scrape_with_retries(scraper, url, max_retries=5, delay=0.5):
             for _ in range(max_retries):
@@ -38,6 +44,7 @@ class TestScrape(unittest.TestCase):
         self.io = InputOutput(yes=True)
         self.commands = Commands(self.io, None)
 
+    @needs_playwright
     def test_cmd_web_imports_playwright(self):
         # Create a mock print_error function
         mock_print_error = MagicMock()
@@ -66,6 +73,7 @@ class TestScrape(unittest.TestCase):
         # Assert that print_error was never called
         mock_print_error.assert_not_called()
 
+    @needs_playwright
     def test_scrape_actual_url_with_playwright(self):
         # Create a Scraper instance with a mock print_error function
         mock_print_error = MagicMock()
@@ -94,6 +102,7 @@ class TestScrape(unittest.TestCase):
         # Assert that print_error was never called
         mock_print_error.assert_not_called()
 
+    @needs_playwright
     def test_scrape_with_playwright_error_handling(self):
         # Create a Scraper instance with a mock print_error function
         mock_print_error = MagicMock()

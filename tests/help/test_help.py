@@ -2,6 +2,7 @@ import time
 import unittest
 from unittest.mock import MagicMock
 
+import pytest
 from requests.exceptions import ConnectionError, ReadTimeout
 
 import aider
@@ -10,6 +11,9 @@ from aider.commands import Commands
 from aider.help import Help, fname_to_url
 from aider.io import InputOutput
 from aider.models import Model
+
+# Without the [help] extra, /help tries to pip install it at test time.
+pytest.importorskip("llama_index.core", reason="needs the aider-chat[help] extra")
 
 
 class TestHelp(unittest.TestCase):

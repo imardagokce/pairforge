@@ -2,7 +2,11 @@ import os
 import unittest
 from unittest.mock import patch
 
+import pytest
+
 from aider.main import main
+
+pytest.importorskip("streamlit", reason="needs the aider-chat[browser] extra")
 
 
 class TestBrowser(unittest.TestCase):
