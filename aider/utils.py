@@ -196,6 +196,23 @@ def split_chat_history_markdown(text, include_tool=False):
     return messages
 
 
+# Third-party packages behind each optional extra. These were previously installed as
+# "<upstream package>[<extra>]", which would pull upstream Aider from PyPI over pairforge.
+# Kept in sync with requirements/requirements-<extra>.in.
+EXTRA_PACKAGES = {
+    "help": [
+        "llama-index-embeddings-huggingface",
+        'numpy<2; python_version < "3.11"',
+        'numpy>=2.3,<2.5; python_version >= "3.11"',
+        "torch>=2.3.0",
+        'scikit-learn==1.7.2 ; python_version < "3.11"',
+        'scikit-learn==1.8.0 ; python_version >= "3.11"',
+    ],
+    "browser": ["streamlit"],
+    "playwright": ["playwright"],
+}
+
+
 def get_pip_install(args):
     cmd = [
         sys.executable,

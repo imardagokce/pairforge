@@ -17,7 +17,7 @@ Edit code in your local git repository through a conversation with an LLM.
 </div>
 
 > [!NOTE]
-> pairforge is a fork of [Aider-AI/aider](https://github.com/Aider-AI/aider) (Apache-2.0). It is an independent project and is **not** affiliated with or endorsed by the Aider maintainers. The command-line entry point is still `aider`. See [Attribution](#attribution).
+> pairforge is a fork of [Aider-AI/aider](https://github.com/Aider-AI/aider) (Apache-2.0). It is an independent project and is **not** affiliated with or endorsed by the Aider maintainers. The command is `pairforge`; `aider` still works as an alias. See [Attribution](#attribution).
 
 ---
 
@@ -52,7 +52,7 @@ pip install -e .
 # 3. Run it inside the project you want to edit
 cd /path/to/your/project
 export ANTHROPIC_API_KEY=<key>   # or OPENAI_API_KEY, DEEPSEEK_API_KEY, ...
-aider --model sonnet
+pairforge --model sonnet
 ```
 
 ### Local models in one command
@@ -60,8 +60,8 @@ aider --model sonnet
 Start Ollama, LM Studio or a llama.cpp server, then:
 
 ```bash
-aider --local                 # picks the best coding model it finds
-aider --local qwen2.5-coder:7b
+pairforge --local                 # picks the best coding model it finds
+pairforge --local qwen2.5-coder:7b
 ```
 
 `--local` uses the whole edit format (the most reliable one for small models) and the `auto` permission mode, so in a trusted folder it edits files and runs commands without asking each time. Pass `--permission-mode ask` or `--edit-format diff` to override. Inside a session, `/local` lists every model the local servers offer.
@@ -71,13 +71,13 @@ aider --local qwen2.5-coder:7b
 An agent such as Claude Code can plan the work and hand each small step to pairforge, which edits and commits with your local model:
 
 ```bash
-aider --local --permission-mode ask --yes-always --no-pretty --no-stream \
+pairforge --local --permission-mode ask --yes-always --no-pretty --no-stream \
       --message-file step.md path/to/file.py
 ```
 
 `--yes-always` accepts edits and new files but always refuses shell commands and package installs, so a scripted run never executes or installs anything. Review each step with `git show HEAD`.
 
-Run `aider --help` for every option. Model, provider and configuration details are covered in the [upstream documentation](https://aider.chat/docs/), which still applies to this codebase.
+Run `pairforge --help` for every option. Model, provider and configuration details are covered in the [upstream documentation](https://aider.chat/docs/), which still applies to this codebase.
 
 ## Architecture
 

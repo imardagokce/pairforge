@@ -40,7 +40,7 @@ from .editor import pipe_editor
 from .utils import is_image_file
 
 # Constants
-NOTIFICATION_MESSAGE = "Aider is waiting for your input"
+NOTIFICATION_MESSAGE = "pairforge is waiting for your input"
 
 
 def ensure_hash_prefix(color):
@@ -1070,17 +1070,18 @@ class InputOutput:
         if system == "Darwin":  # macOS
             # Check for terminal-notifier first
             if shutil.which("terminal-notifier"):
-                return f"terminal-notifier -title 'Aider' -message '{NOTIFICATION_MESSAGE}'"
+                return f"terminal-notifier -title 'pairforge' -message '{NOTIFICATION_MESSAGE}'"
             # Fall back to osascript
             return (
-                f'osascript -e \'display notification "{NOTIFICATION_MESSAGE}" with title "Aider"\''
+                "osascript -e 'display notification "
+                f'"{NOTIFICATION_MESSAGE}" with title "pairforge"\''
             )
         elif system == "Linux":
             # Check for common Linux notification tools
             for cmd in ["notify-send", "zenity"]:
                 if shutil.which(cmd):
                     if cmd == "notify-send":
-                        return f"notify-send 'Aider' '{NOTIFICATION_MESSAGE}'"
+                        return f"notify-send 'pairforge' '{NOTIFICATION_MESSAGE}'"
                     elif cmd == "zenity":
                         return f"zenity --notification --text='{NOTIFICATION_MESSAGE}'"
             return None  # No known notification tool found

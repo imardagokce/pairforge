@@ -34,7 +34,7 @@ def default_env_file(git_root):
 
 def get_parser(default_config_files, git_root):
     parser = configargparse.ArgumentParser(
-        description="aider is AI pair programming in your terminal",
+        description="pairforge is AI pair programming in your terminal",
         add_config_file_help=True,
         default_config_files=default_config_files,
         config_file_parser_class=configargparse.YAMLConfigFileParser,
@@ -639,7 +639,7 @@ def get_parser(default_config_files, git_root):
     group.add_argument(
         "--check-update",
         action=argparse.BooleanOptionalAction,
-        help="Check for new aider versions on launch",
+        help="Check for new pairforge versions on launch",
         default=True,
     )
     group.add_argument(

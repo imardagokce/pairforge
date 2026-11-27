@@ -308,7 +308,7 @@ def start_openrouter_oauth_flow(io, analytics):
     }
     auth_url = f"{auth_url_base}?{'&'.join(f'{k}={v}' for k, v in auth_params.items())}"
 
-    io.tool_output("\nPlease open this URL in your browser to connect Aider with OpenRouter:")
+    io.tool_output("\nPlease open this URL in your browser to connect pairforge with OpenRouter:")
     io.tool_output()
     print(auth_url)
 
@@ -366,7 +366,9 @@ def start_openrouter_oauth_flow(io, analytics):
             with open(key_file, "a", encoding="utf-8") as f:
                 f.write(f'OPENROUTER_API_KEY="{api_key}"\n')
 
-            io.tool_warning("Aider will load the OpenRouter key automatically in future sessions.")
+            io.tool_warning(
+                "pairforge will load the OpenRouter key automatically in future sessions."
+            )
             io.tool_output()
 
             analytics.event("oauth_flow_success", provider="openrouter")
