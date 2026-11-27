@@ -149,3 +149,29 @@ class TestStatusLine(TestCase):
             with patch.object(coder.io, "get_input", return_value="x") as mock_get:
                 coder.get_input()
             self.assertIsNone(mock_get.call_args.kwargs.get("status_line"))
+
+
+class TestLocalThinkingAutoEffort(unittest.TestCase):
+    """auto effort must reach /no_think and the status line for local qwen3."""
+
+    def test_auto_low_on_local_qwen3_is_kept_and_reported(self):
+        from aider.models import Model
+
+        model = Model("ollama_chat/qwen3:8b")
+        model.set_reasoning_effort("auto")
+        with patch("aider.models.choose_reasoning_effort", return_value="low"):
+            self.assertEqual(model.apply_auto_reasoning_effort("hi"), "low")
+        self.assertEqual(model.get_reasoning_effort(), "low")
+        self.assertNotIn("reasoning_effort", str(model.extra_params or {}))
+
+    def test_auto_low_adds_no_think_to_request(self):
+        from aider.models import Model
+
+        model = Model("ollama_chat/qwen3:8b")
+        model.set_reasoning_effort("auto")
+        with patch("aider.models.choose_reasoning_effort", return_value="low"):
+            model.apply_auto_reasoning_effort("rename x to y")
+        with patch("aider.models.litellm.completion") as completion:
+            model.send_completion([dict(role="user", content="rename x")], None, False)
+        sent = completion.call_args.kwargs["messages"]
+        self.assertTrue(sent[-1]["content"].endswith("/no_think"))

@@ -887,7 +887,12 @@ class Model(ModelSettings):
         if not self.auto_reasoning_effort:
             return None
         if not (self.accepts_settings and "reasoning_effort" in self.accepts_settings):
-            return None
+            if not self.is_local_thinking_model():
+                return None
+            # Local thinking models take no reasoning_effort parameter; the level is kept
+            # so send_completion can add /no_think on "low" and the status line can show it.
+            self.last_auto_effort = choose_reasoning_effort(message)
+            return self.last_auto_effort
 
         level = choose_reasoning_effort(message)
         self.set_reasoning_effort(level)
@@ -998,6 +1003,8 @@ class Model(ModelSettings):
         """Get reasoning effort value if available"""
         if self.auto_reasoning_effort and self.last_auto_effort is None:
             return AUTO
+        if self.auto_reasoning_effort and self.is_local_thinking_model():
+            return self.last_auto_effort
         if self.extra_params:
             # Check for OpenRouter reasoning format
             if self.name.startswith("openrouter/"):
@@ -1027,6 +1034,13 @@ class Model(ModelSettings):
     def is_local_qwen3(self):
         name = self.name.lower()
         return name.startswith(("ollama/", "ollama_chat/", "lm_studio/")) and "qwen3" in name
+
+    def is_local_thinking_model(self):
+        """A local model whose preset marks it as a thinking model (qwen3, deepseek-r1)."""
+        from aider.local_models import local_model_preset
+
+        preset = local_model_preset(self.name)
+        return bool(preset and preset.get("reasoning_tag") == "think")
 
     def github_copilot_token_to_open_ai_key(self, extra_headers):
         # check to see if there's an openai api key
