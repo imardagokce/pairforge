@@ -125,6 +125,12 @@ class TestApplyLocalQuickstart(unittest.TestCase):
             self.run_quickstart(args)
         self.assertIsNone(args.edit_format)
 
+    def test_model_with_local_preset_leaves_edit_format_to_preset(self):
+        args = _args(model="ollama_chat/qwen2.5-coder:14b")
+        self.assertTrue(apply_local_quickstart(args, self.io, discover=mock.Mock()))
+        self.assertIsNone(args.edit_format)
+        self.assertEqual(args.permission_mode, "auto")
+
     def test_explicit_model_skips_discovery(self):
         args = _args(model="ollama_chat/mine")
         discover = mock.Mock()

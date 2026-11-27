@@ -20,7 +20,7 @@ What the inherited codebase already provides (found by mapping the source), so w
 **Goal:** running a locally hosted model should take one command, not manual configuration.
 - [x] Discover running local servers (Ollama, LM Studio, llama.cpp server) and list their models. **Done** (`/local` checks all three at once; `/ollama` still lists Ollama alone)
 - [x] `--local [MODEL]` quick start: finds a local server, prefers coding models, then the largest, uses the whole edit format for models without known settings, and turns on `auto` permission mode unless told otherwise. The Ollama context size was already set per request (`num_ctx`). **Done**
-- [ ] Per-model presets for common local models (context window, edit format, token limits). **Planned**
+- [x] Per-model presets for common local models (context window, edit format, token limits). **Done** (`ollama/`, `ollama_chat/` and `lm_studio/` names of qwen, deepseek, llama, gemma, phi, mistral and codellama families: context window when the model has no known info, diff for 14B and up, whole below, `think` reasoning tag for qwen3 and deepseek-r1)
 - [ ] Clear, actionable errors when the server is down or the context window is too small. **Planned**
 
 ### 2. Automatic compaction

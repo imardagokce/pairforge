@@ -1,4 +1,5 @@
 import os
+import re
 from concurrent.futures import ThreadPoolExecutor
 
 import requests
@@ -6,6 +7,70 @@ import requests
 DEFAULT_OLLAMA_BASE = "http://127.0.0.1:11434"
 DEFAULT_LM_STUDIO_BASE = "http://127.0.0.1:1234/v1"
 DEFAULT_LLAMA_CPP_BASE = "http://127.0.0.1:8080/v1"
+
+LOCAL_PREFIXES = ("ollama/", "ollama_chat/", "lm_studio/")
+
+# (substring, context window, extra settings). The first matching entry wins.
+_LOCAL_FAMILIES = [
+    ("qwen2.5-coder", 32768, {}),
+    ("qwen2.5coder", 32768, {}),
+    ("qwen3", 40960, {"reasoning_tag": "think"}),
+    ("qwen2.5", 32768, {}),
+    ("qwen2", 32768, {}),
+    ("deepseek-r1", 131072, {"reasoning_tag": "think"}),
+    ("deepseek-coder-v2", 163840, {}),
+    ("deepseek-coder", 16384, {}),
+    ("codellama", 16384, {}),
+    ("codestral", 32768, {}),
+    ("llama3.1", 131072, {}),
+    ("llama3.2", 131072, {}),
+    ("llama3.3", 131072, {}),
+    ("llama3", 8192, {}),
+    ("gemma3", 131072, {}),
+    ("gemma2", 8192, {}),
+    ("gemma", 8192, {}),
+    ("phi4", 16384, {}),
+    ("phi3", 4096, {}),
+    ("mistral-nemo", 131072, {}),
+    ("mistral", 32768, {}),
+]
+
+_PARAM_SIZE_RE = re.compile(r"(\d+(?:\.\d+)?)b\b")
+
+
+def local_model_preset(name):
+    """Return default settings for a common local model, or None.
+
+    Only names with a LOCAL_PREFIXES prefix are considered. The preset holds the
+    context window, output limit, edit format (diff for models of 14B and up,
+    whole otherwise) and, for reasoning models, the reasoning tag.
+    """
+    if not name or not name.startswith(LOCAL_PREFIXES):
+        return None
+
+    stripped = name.split("/", 1)[1].lower()
+
+    family = None
+    for key, context, extra in _LOCAL_FAMILIES:
+        if key in stripped:
+            family = (key, context, extra)
+            break
+    if family is None:
+        return None
+
+    key, context, extra = family
+    size_match = _PARAM_SIZE_RE.search(stripped)
+    size = float(size_match.group(1)) if size_match else None
+
+    preset = {
+        "family": key,
+        "max_input_tokens": context,
+        "max_output_tokens": min(8192, context // 4),
+        "edit_format": "diff" if size is not None and size >= 14 else "whole",
+        "use_repo_map": True,
+    }
+    preset.update(extra)
+    return preset
 
 
 class LocalModelError(Exception):
@@ -183,7 +248,8 @@ def apply_local_quickstart(args, io, discover=None):
 
     from aider import models
 
-    known = any(ms.name == args.model for ms in models.MODEL_SETTINGS)
+    exact_match = any(ms.name == args.model for ms in models.MODEL_SETTINGS)
+    known = exact_match or local_model_preset(args.model) is not None
     if args.edit_format is None and not known:
         args.edit_format = "whole"
         io.tool_output("Using the whole edit format, which small models handle most reliably.")

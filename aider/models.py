@@ -349,7 +349,15 @@ class Model(ModelSettings):
             (ms for ms in MODEL_SETTINGS if ms.name == "aider/extra_params"), None
         )
 
-        self.info = self.get_model_info(model)
+        self.info = dict(self.get_model_info(model) or {})
+
+        # Local models usually have no litellm info: fill the context window from the preset
+        from aider.local_models import local_model_preset
+
+        preset = local_model_preset(self.name)
+        if preset and not self.info.get("max_input_tokens"):
+            self.info["max_input_tokens"] = preset["max_input_tokens"]
+            self.info["max_output_tokens"] = preset["max_output_tokens"]
 
         # Are all needed keys/params available?
         res = self.validate_environment()
@@ -405,6 +413,15 @@ class Model(ModelSettings):
         # If no exact match, try generic settings
         if not exact_match:
             self.apply_generic_model_settings(model)
+
+            from aider.local_models import local_model_preset
+
+            preset = local_model_preset(self.name)
+            if preset:
+                self.edit_format = preset["edit_format"]
+                self.use_repo_map = preset["use_repo_map"]
+                if "reasoning_tag" in preset:
+                    self.reasoning_tag = preset["reasoning_tag"]
 
         # Apply override settings last if they exist
         if (
