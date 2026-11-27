@@ -62,6 +62,18 @@ def get_parser(default_config_files, git_root):
         default=None,
         help="Specify the model to use for the main chat",
     )
+    group.add_argument(
+        "--local",
+        nargs="?",
+        const="",
+        default=None,
+        metavar="MODEL",
+        help=(
+            "Quick start with a local model: find a running Ollama, LM Studio or llama.cpp"
+            " server and use its best coding model (or MODEL), with the whole edit format and"
+            " auto permission mode unless set otherwise"
+        ),
+    )
 
     ##########
     group = parser.add_argument_group("API Keys and settings")
@@ -769,7 +781,7 @@ def get_parser(default_config_files, git_root):
         "--permission-mode",
         metavar="PERMISSION_MODE",
         choices=["ask", "auto"],
-        default="ask",
+        default=None,
         help=(
             "Set the permission mode: 'ask' (default) asks before adding or editing files and"
             " running shell commands. 'auto' stops those prompts inside a trusted folder: files"

@@ -106,12 +106,12 @@ def discover_local_servers(timeout=1):
         try:
             if name == "Ollama":
                 found = list_ollama_models(base_url, timeout=timeout)
-                models = [f"ollama_chat/{m['name']}" for m in found]
-            else:
-                ids = list_openai_compatible_models(base_url, timeout=timeout)
-                models = [prefixes[name] + model_id for model_id in ids]
+                sizes = {f"ollama_chat/{m['name']}": m["size_gb"] for m in found}
+                return {"name": name, "base_url": base_url, "models": list(sizes), "sizes": sizes}
+            ids = list_openai_compatible_models(base_url, timeout=timeout)
         except LocalModelError:
             return None
+        models = [prefixes[name] + model_id for model_id in ids]
         return {"name": name, "base_url": base_url, "models": models}
 
     # Probe in parallel: a refused connection can take about a second on Windows.
@@ -119,3 +119,76 @@ def discover_local_servers(timeout=1):
     with ThreadPoolExecutor(max_workers=len(addresses)) as pool:
         results = list(pool.map(lambda pair: probe(*pair), addresses))
     return [server for server in results if server]
+
+
+def choose_local_model(servers, wanted=None):
+    """Pick a model from discovered servers. Returns (model_name, server).
+
+    With wanted, match it with or without the provider prefix. Otherwise prefer
+    models whose name mentions "coder", then the largest one (Ollama reports
+    sizes), keeping discovery order on ties.
+    """
+    if not servers:
+        raise LocalModelError(
+            "No local model servers found. Start Ollama, LM Studio or a llama.cpp server,"
+            " then try again."
+        )
+
+    candidates = [(model, server) for server in servers for model in server["models"]]
+    if not candidates:
+        raise LocalModelError(
+            "Local servers are running but have no models. Pull or load one first,"
+            " for example: ollama pull qwen2.5-coder:7b"
+        )
+
+    if wanted:
+        for model, server in candidates:
+            if model == wanted or model.split("/", 1)[-1] == wanted:
+                return model, server
+        available = ", ".join(model for model, _ in candidates)
+        raise LocalModelError(f"Local model {wanted} was not found. Available: {available}")
+
+    def rank(item):
+        model, server = item
+        is_coder = "coder" in model.lower()
+        size = server.get("sizes", {}).get(model, 0)
+        return (not is_coder, -size)
+
+    return min(candidates, key=rank)
+
+
+def apply_local_quickstart(args, io, discover=None):
+    """Configure args for --local. Returns False if pairforge should exit.
+
+    Picks a local model unless --model was given, points LiteLLM at the server,
+    uses the whole edit format for models without known settings, and turns on
+    auto permission mode unless --permission-mode was given.
+    """
+    if args.local is None:
+        return True
+
+    if not args.model:
+        try:
+            servers = (discover or discover_local_servers)()
+            model, server = choose_local_model(servers, args.local or None)
+        except LocalModelError as err:
+            io.tool_error(str(err))
+            return False
+        args.model = model
+        io.tool_output(f"Using local model {model} from {server['name']} at {server['base_url']}")
+        if server["name"] == "LM Studio" and not os.environ.get("LM_STUDIO_API_BASE"):
+            os.environ["LM_STUDIO_API_BASE"] = server["base_url"]
+        elif server["name"] == "llama.cpp":
+            os.environ["OPENAI_API_BASE"] = server["base_url"]
+
+    from aider import models
+
+    known = any(ms.name == args.model for ms in models.MODEL_SETTINGS)
+    if args.edit_format is None and not known:
+        args.edit_format = "whole"
+        io.tool_output("Using the whole edit format, which small models handle most reliably.")
+
+    if args.permission_mode is None:
+        args.permission_mode = "auto"
+
+    return True

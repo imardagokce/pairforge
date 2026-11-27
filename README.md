@@ -55,6 +55,17 @@ export ANTHROPIC_API_KEY=<key>   # or OPENAI_API_KEY, DEEPSEEK_API_KEY, ...
 aider --model sonnet
 ```
 
+### Local models in one command
+
+Start Ollama, LM Studio or a llama.cpp server, then:
+
+```bash
+aider --local                 # picks the best coding model it finds
+aider --local qwen2.5-coder:7b
+```
+
+`--local` uses the whole edit format (the most reliable one for small models) and the `auto` permission mode, so in a trusted folder it edits files and runs commands without asking each time. Pass `--permission-mode ask` or `--edit-format diff` to override. Inside a session, `/local` lists every model the local servers offer.
+
 Run `aider --help` for every option. Model, provider and configuration details are covered in the [upstream documentation](https://aider.chat/docs/), which still applies to this codebase.
 
 ## Architecture

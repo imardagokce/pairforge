@@ -1481,3 +1481,55 @@ class TestMain(TestCase):
             )
         for call in mock_io_instance.tool_warning.call_args_list:
             self.assertNotIn("Cost estimates may be inaccurate", call[0][0])
+
+
+class TestLocalQuickstartMain(TestCase):
+    SERVERS = [
+        {
+            "name": "Ollama",
+            "base_url": "http://127.0.0.1:11434",
+            "models": ["ollama_chat/qwen-coder:7b"],
+            "sizes": {"ollama_chat/qwen-coder:7b": 4.0},
+        }
+    ]
+
+    def setUp(self):
+        self.tempdir_obj = IgnorantTemporaryDirectory()
+        self._env = patch.dict(
+            os.environ,
+            {
+                "AIDER_CHECK_UPDATE": "false",
+                "AIDER_ANALYTICS": "false",
+                "AIDER_TRUST_FILE": str(Path(self.tempdir_obj.name) / "trust.json"),
+            },
+        )
+        self._env.start()
+        self.original_cwd = os.getcwd()
+        os.chdir(self.tempdir_obj.name)
+
+    def tearDown(self):
+        os.chdir(self.original_cwd)
+        self._env.stop()
+        self.tempdir_obj.cleanup()
+
+    def run_main(self, argv, servers):
+        with patch("aider.local_models.discover_local_servers", return_value=servers):
+            return main(
+                argv + ["--no-git", "--exit", "--yes"],
+                input=DummyInput(),
+                output=DummyOutput(),
+                return_coder=True,
+            )
+
+    def test_local_picks_model_whole_format_and_auto_mode(self):
+        coder = self.run_main(["--local"], self.SERVERS)
+        self.assertEqual(coder.main_model.name, "ollama_chat/qwen-coder:7b")
+        self.assertEqual(coder.edit_format, "whole")
+        self.assertEqual(coder.permission_policy.mode, "auto")
+
+    def test_without_local_permission_mode_defaults_to_ask(self):
+        coder = self.run_main(["--model", "gpt-4o-mini"], self.SERVERS)
+        self.assertEqual(coder.permission_policy.mode, "ask")
+
+    def test_local_without_servers_exits_with_error(self):
+        self.assertEqual(self.run_main(["--local"], []), 1)

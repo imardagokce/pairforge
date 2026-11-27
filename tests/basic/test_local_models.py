@@ -6,12 +6,156 @@ import requests
 
 from aider.commands import Commands
 from aider.io import InputOutput
+from aider import models
 from aider.local_models import (
     LocalModelError,
+    apply_local_quickstart,
+    choose_local_model,
     discover_local_servers,
     list_ollama_models,
     list_openai_compatible_models,
 )
+from aider.models import ModelSettings
+
+
+def _ollama(models_and_sizes):
+    return {
+        "name": "Ollama",
+        "base_url": "http://127.0.0.1:11434",
+        "models": [name for name, _ in models_and_sizes],
+        "sizes": dict(models_and_sizes),
+    }
+
+
+def _args(**overrides):
+    values = dict(local="", model=None, edit_format=None, permission_mode=None)
+    values.update(overrides)
+    return mock.Mock(spec=list(values), **values)
+
+
+class TestChooseLocalModel(unittest.TestCase):
+    def test_prefers_coder_model_over_bigger_general_model(self):
+        servers = [_ollama([("ollama_chat/llama3:70b", 40.0), ("ollama_chat/qwen-coder:7b", 4.0)])]
+        model, server = choose_local_model(servers)
+        self.assertEqual(model, "ollama_chat/qwen-coder:7b")
+        self.assertEqual(server["name"], "Ollama")
+
+    def test_picks_largest_when_no_coder_model(self):
+        servers = [_ollama([("ollama_chat/small:1b", 1.0), ("ollama_chat/big:8b", 5.0)])]
+        model, _ = choose_local_model(servers)
+        self.assertEqual(model, "ollama_chat/big:8b")
+
+    def test_wanted_name_matches_without_prefix(self):
+        servers = [
+            _ollama([("ollama_chat/qwen-coder:7b", 4.0), ("ollama_chat/qwen3.5:4b", 3.0)])
+        ]
+        model, _ = choose_local_model(servers, "qwen3.5:4b")
+        self.assertEqual(model, "ollama_chat/qwen3.5:4b")
+
+    def test_wanted_name_not_found_lists_available(self):
+        servers = [_ollama([("ollama_chat/qwen-coder:7b", 4.0)])]
+        with self.assertRaises(LocalModelError) as ctx:
+            choose_local_model(servers, "missing-model")
+        self.assertIn("missing-model", str(ctx.exception))
+        self.assertIn("ollama_chat/qwen-coder:7b", str(ctx.exception))
+
+    def test_no_servers_raises(self):
+        with self.assertRaises(LocalModelError) as ctx:
+            choose_local_model([])
+        self.assertIn("No local model servers", str(ctx.exception))
+
+    def test_servers_without_models_raise(self):
+        with self.assertRaises(LocalModelError) as ctx:
+            choose_local_model([_ollama([])])
+        self.assertIn("no models", str(ctx.exception))
+
+
+class TestApplyLocalQuickstart(unittest.TestCase):
+    def setUp(self):
+        self._env = mock.patch.dict(os.environ, {}, clear=False)
+        self._env.start()
+        for name in ("LM_STUDIO_API_BASE", "OPENAI_API_BASE"):
+            os.environ.pop(name, None)
+        self.io = mock.Mock()
+        self.servers = [_ollama([("ollama_chat/qwen-coder:7b", 4.0)])]
+
+    def tearDown(self):
+        self._env.stop()
+
+    def run_quickstart(self, args, servers=None):
+        servers = self.servers if servers is None else servers
+        return apply_local_quickstart(args, self.io, discover=lambda: servers)
+
+    def test_without_local_flag_changes_nothing(self):
+        args = _args(local=None)
+        discover = mock.Mock()
+        self.assertTrue(apply_local_quickstart(args, self.io, discover=discover))
+        discover.assert_not_called()
+        self.assertIsNone(args.model)
+        self.assertIsNone(args.edit_format)
+        self.assertIsNone(args.permission_mode)
+
+    def test_sets_model_whole_format_and_auto_permissions(self):
+        args = _args()
+        self.assertTrue(self.run_quickstart(args))
+        self.assertEqual(args.model, "ollama_chat/qwen-coder:7b")
+        self.assertEqual(args.edit_format, "whole")
+        self.assertEqual(args.permission_mode, "auto")
+
+    def test_named_model_is_used(self):
+        servers = [_ollama([("ollama_chat/qwen-coder:7b", 4.0), ("ollama_chat/phi4:14b", 9.0)])]
+        args = _args(local="phi4:14b")
+        self.assertTrue(self.run_quickstart(args, servers))
+        self.assertEqual(args.model, "ollama_chat/phi4:14b")
+
+    def test_explicit_permission_mode_is_kept(self):
+        args = _args(permission_mode="ask")
+        self.run_quickstart(args)
+        self.assertEqual(args.permission_mode, "ask")
+
+    def test_explicit_edit_format_is_kept(self):
+        args = _args(edit_format="diff")
+        self.run_quickstart(args)
+        self.assertEqual(args.edit_format, "diff")
+
+    def test_known_model_keeps_its_own_edit_format(self):
+        known = ModelSettings(name="ollama_chat/qwen-coder:7b", edit_format="diff")
+        with mock.patch.object(models, "MODEL_SETTINGS", [known]):
+            args = _args()
+            self.run_quickstart(args)
+        self.assertIsNone(args.edit_format)
+
+    def test_explicit_model_skips_discovery(self):
+        args = _args(model="ollama_chat/mine")
+        discover = mock.Mock()
+        self.assertTrue(apply_local_quickstart(args, self.io, discover=discover))
+        discover.assert_not_called()
+        self.assertEqual(args.model, "ollama_chat/mine")
+        self.assertEqual(args.edit_format, "whole")
+        self.assertEqual(args.permission_mode, "auto")
+
+    def test_lm_studio_sets_api_base(self):
+        servers = [
+            {"name": "LM Studio", "base_url": "http://127.0.0.1:1234/v1", "models": ["lm_studio/q"]}
+        ]
+        args = _args()
+        self.run_quickstart(args, servers)
+        self.assertEqual(os.environ["LM_STUDIO_API_BASE"], "http://127.0.0.1:1234/v1")
+
+    def test_llama_cpp_sets_openai_api_base(self):
+        servers = [
+            {"name": "llama.cpp", "base_url": "http://127.0.0.1:8080/v1", "models": ["openai/m"]}
+        ]
+        args = _args()
+        self.run_quickstart(args, servers)
+        self.assertEqual(args.model, "openai/m")
+        self.assertEqual(os.environ["OPENAI_API_BASE"], "http://127.0.0.1:8080/v1")
+
+    def test_nothing_found_reports_error_and_returns_false(self):
+        args = _args()
+        self.assertFalse(self.run_quickstart(args, []))
+        self.io.tool_error.assert_called_once()
+        self.assertIsNone(args.model)
 
 
 def _fake_response(status=200, payload=None, json_error=None):

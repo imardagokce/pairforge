@@ -18,7 +18,7 @@ import shtab
 from dotenv import load_dotenv
 from prompt_toolkit.enums import EditingMode
 
-from aider import __version__, models, urls, utils
+from aider import __version__, local_models, models, urls, utils
 from aider.analytics import Analytics
 from aider.args import get_parser
 from aider.coders import Coder
@@ -774,6 +774,12 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
                 return 1
             alias, model = parts
             models.MODEL_ALIASES[alias.strip()] = model.strip()
+
+    if not local_models.apply_local_quickstart(args, io):
+        analytics.event("exit", reason="No local model found")
+        return 1
+    if args.permission_mode is None:
+        args.permission_mode = "ask"
 
     selected_model_name = select_default_model(args, io, analytics)
     if not selected_model_name:
