@@ -41,7 +41,8 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y libportaudio2
+        # pandoc: otherwise pypandoc tries to download "latest" at test time and fails
+        sudo apt-get install -y libportaudio2 pandoc
 
     - name: Install dependencies
       run: |
