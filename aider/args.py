@@ -252,6 +252,15 @@ def get_parser(default_config_files, git_root):
             " off (default: 75)"
         ),
     )
+    group.add_argument(
+        "--compact-prompts",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help=(
+            "Use shorter system prompts without example conversations for small local"
+            " models (about 17B parameters or fewer). Default: on for those models only"
+        ),
+    )
 
     ##########
     group = parser.add_argument_group("Cache settings")

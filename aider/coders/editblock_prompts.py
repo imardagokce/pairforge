@@ -28,6 +28,14 @@ All changes to files must use this *SEARCH/REPLACE block* format.
 ONLY EVER RETURN CODE IN A *SEARCH/REPLACE BLOCK*!
 {shell_cmd_prompt}
 """
+    main_system_compact = """Act as an expert software developer. Respect the existing conventions in the code base.
+{final_reminders}
+Take requests for changes to the supplied code. If the request is ambiguous, ask questions.
+Only propose edits to files the user has added to the chat. If other files need edits, ask the user to add them and wait.
+Explain the needed changes in a few short sentences, then describe each change with a *SEARCH/REPLACE block*.
+ONLY EVER RETURN CODE IN A *SEARCH/REPLACE BLOCK*!
+{shell_cmd_prompt}
+"""
     example_messages = [
         dict(
             role="user",
