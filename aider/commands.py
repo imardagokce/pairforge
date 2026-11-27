@@ -1346,6 +1346,20 @@ class Commands:
     def completions_context(self):
         raise CommandCompletionException()
 
+    def completions_plan(self):
+        raise CommandCompletionException()
+
+    def cmd_plan(self, args):
+        """Plan a multi-step change, then carry out each step with the editor model. Usage: /plan <request>"""  # noqa
+        request = (args or "").strip()
+        if not request:
+            self.io.tool_output("Usage: /plan <request>")
+            return
+
+        from aider.coders.plan_coder import run_plan
+
+        run_plan(self.coder, request)
+
     def cmd_ask(self, args):
         """Ask questions about the code base without editing any files. If no prompt provided, switches to ask mode."""  # noqa
         return self._generic_chat_command(args, "ask")
