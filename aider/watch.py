@@ -8,6 +8,7 @@ from pathspec import PathSpec
 from pathspec.patterns import GitWildMatchPattern
 from watchfiles import watch
 
+from aider.i18n import _
 from aider.dump import dump  # noqa
 from aider.watch_prompts import watch_ask_prompt, watch_code_prompt
 
@@ -184,7 +185,7 @@ class FileWatcher:
         has_action = None
         added = False
         for fname in self.changed_files:
-            _, _, action = self.get_ai_comments(fname)
+            _comments, _lois, action = self.get_ai_comments(fname)
             if action in ("!", "?"):
                 has_action = action
 
@@ -197,18 +198,18 @@ class FileWatcher:
             if not added:
                 self.io.tool_output()
                 added = True
-            self.io.tool_output(f"Added {rel_fname} to the chat")
+            self.io.tool_output(_("Added {rel_fname} to the chat").format(rel_fname=rel_fname))
 
         if not has_action:
             if added:
                 self.io.tool_output(
-                    "End your comment with AI! to request changes or AI? to ask questions"
+                    _("End your comment with AI! to request changes or AI? to ask questions")
                 )
             return ""
 
         if self.analytics:
             self.analytics.event("ai-comments execute")
-        self.io.tool_output("Processing your request...")
+        self.io.tool_output(_("Processing your request..."))
 
         if has_action == "!":
             res = watch_code_prompt
@@ -295,7 +296,7 @@ def main():
     args = parser.parse_args()
 
     directory = args.directory
-    print(f"Watching source files in {directory}...")
+    print(_("Watching source files in {directory}...").format(directory=directory))
 
     # Example ignore function that ignores files with "test" in the name
     def ignore_test_files(path):
@@ -310,7 +311,7 @@ def main():
                     print(file)
                 watcher.changed_files = None
     except KeyboardInterrupt:
-        print("\nStopped watching files")
+        print(_("\nStopped watching files"))
         watcher.stop()
 
 

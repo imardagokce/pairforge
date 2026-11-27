@@ -7,6 +7,7 @@ from pathlib import Path
 
 import oslex
 
+from aider.i18n import _
 from aider.dump import dump  # noqa: F401
 from aider.waiting import Spinner
 
@@ -228,7 +229,7 @@ def get_pip_install(args):
 
 def run_install(cmd):
     print()
-    print("Installing:", printable_shell_command(cmd))
+    print(_("Installing:"), printable_shell_command(cmd))
 
     # First ensure pip is available
     ensurepip_cmd = [sys.executable, "-m", "ensurepip", "--upgrade"]
@@ -264,14 +265,14 @@ def run_install(cmd):
         output = "".join(output)
 
         if return_code == 0:
-            print("Installation complete.")
+            print(_("Installation complete."))
             print()
             return True, output
 
     except subprocess.CalledProcessError as e:
-        print(f"\nError running pip install: {e}")
+        print(_("\nError running pip install: {e}").format(e=e))
 
-    print("\nInstallation failed.\n")
+    print(_("\nInstallation failed.\n"))
 
     return False, output
 
@@ -325,14 +326,14 @@ def check_pip_install_extra(io, module, prompt, pip_install_cmd, self_update=Fal
         io.tool_warning(prompt)
 
     if self_update and platform.system() == "Windows":
-        io.tool_output("Run this command to update:")
+        io.tool_output(_("Run this command to update:"))
         print()
         print(printable_shell_command(cmd))  # plain print so it doesn't line-wrap
         return
 
     # explicit_yes_required: --yes-always must never install packages on its own
     if not io.confirm_ask(
-        "Run pip install?",
+        _("Run pip install?"),
         default="y",
         subject=printable_shell_command(cmd),
         explicit_yes_required=True,
@@ -353,7 +354,7 @@ def check_pip_install_extra(io, module, prompt, pip_install_cmd, self_update=Fal
     io.tool_error(output)
 
     print()
-    print("Install failed, try running this command manually:")
+    print(_("Install failed, try running this command manually:"))
     print(printable_shell_command(cmd))
 
 

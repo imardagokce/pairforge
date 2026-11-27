@@ -18,6 +18,7 @@ import shtab
 from dotenv import load_dotenv
 from prompt_toolkit.enums import EditingMode
 
+from aider.i18n import _
 from aider import __version__, i18n, local_models, models, urls, utils
 from aider.analytics import Analytics
 from aider.args import get_parser
@@ -49,9 +50,12 @@ def check_config_files_for_yes(config_files):
                 with open(config_file, "r") as f:
                     for line in f:
                         if line.strip().startswith("yes:"):
-                            print("Configuration error detected.")
-                            print(f"The file {config_file} contains a line starting with 'yes:'")
-                            print("Please replace 'yes:' with 'yes-always:' in this file.")
+                            print(_("Configuration error detected."))
+                            print(
+                                _("The file {config_file} contains a line "
+                                  "starting with 'yes:'").format(config_file=config_file)
+                            )
+                            print(_("Please replace 'yes:' with 'yes-always:' in this file."))
                             found = True
             except Exception:
                 pass
@@ -91,11 +95,11 @@ def make_new_repo(git_root, io):
         repo = git.Repo.init(git_root)
         check_gitignore(git_root, io, False)
     except ANY_GIT_ERROR as err:  # issue #1233
-        io.tool_error(f"Unable to create git repo in {git_root}")
+        io.tool_error(_("Unable to create git repo in {git_root}").format(git_root=git_root))
         io.tool_output(str(err))
         return
 
-    io.tool_output(f"Git repository created in {git_root}")
+    io.tool_output(_("Git repository created in {git_root}").format(git_root=git_root))
     return repo
 
 
@@ -117,12 +121,15 @@ def setup_git(git_root, io, auto=False):
             pass
     elif cwd == Path.home():
         io.tool_warning(
-            "You should probably run aider in your project's directory, not your home dir."
+            _("You should probably run aider in your project's directory, not your home dir.")
         )
         return
     elif cwd and (
         auto
-        or io.confirm_ask("No git repo found, create one to track aider's changes (recommended)?")
+        or io.confirm_ask(
+            _("No git repo found, create one to track aider's changes "
+              "(recommended)?")
+        )
     ):
         git_root = str(cwd.resolve())
         repo = make_new_repo(git_root, io)
@@ -146,10 +153,10 @@ def setup_git(git_root, io, auto=False):
     with repo.config_writer() as git_config:
         if not user_name:
             git_config.set_value("user", "name", "Your Name")
-            io.tool_warning('Update git name with: git config user.name "Your Name"')
+            io.tool_warning(_('Update git name with: git config user.name "Your Name"'))
         if not user_email:
             git_config.set_value("user", "email", "you@example.com")
-            io.tool_warning('Update git email with: git config user.email "you@example.com"')
+            io.tool_warning(_('Update git email with: git config user.email "you@example.com"'))
 
     return repo.working_tree_dir
 
@@ -181,7 +188,11 @@ def check_gitignore(git_root, io, ask=True):
                 if not content.endswith("\n"):
                     content += "\n"
             except OSError as e:
-                io.tool_error(f"Error when trying to read {gitignore_file}: {e}")
+                io.tool_error(
+                    _("Error when trying to read {gitignore_file}: {e}").format(
+                        gitignore_file=gitignore_file, e=e
+                    )
+                )
                 return
         else:
             content = ""
@@ -189,19 +200,30 @@ def check_gitignore(git_root, io, ask=True):
         return
 
     if ask:
-        io.tool_output("You can skip this check with --no-gitignore")
-        if not io.confirm_ask(f"Add {', '.join(patterns_to_add)} to .gitignore (recommended)?"):
+        io.tool_output(_("You can skip this check with --no-gitignore"))
+        if not io.confirm_ask(
+            _("Add {patterns} to .gitignore (recommended)?").format(
+                patterns=", ".join(patterns_to_add)
+            )
+        ):
             return
 
     content += "\n".join(patterns_to_add) + "\n"
 
     try:
         io.write_text(gitignore_file, content)
-        io.tool_output(f"Added {', '.join(patterns_to_add)} to .gitignore")
-    except OSError as e:
-        io.tool_error(f"Error when trying to write to {gitignore_file}: {e}")
         io.tool_output(
-            "Try running with appropriate permissions or manually add these patterns to .gitignore:"
+            _("Added {patterns} to .gitignore").format(patterns=", ".join(patterns_to_add))
+        )
+    except OSError as e:
+        io.tool_error(
+            _("Error when trying to write to {gitignore_file}: {e}").format(
+                gitignore_file=gitignore_file, e=e
+            )
+        )
+        io.tool_output(
+            _("Try running with appropriate permissions or manually add these "
+              "patterns to .gitignore:")
         )
         for pattern in patterns_to_add:
             io.tool_output(f"  {pattern}")
@@ -225,9 +247,9 @@ def parse_lint_cmds(lint_cmds, io):
         if cmd:
             res[lang] = cmd
         else:
-            io.tool_error(f'Unable to parse --lint-cmd "{lint_cmd}"')
-            io.tool_output('The arg should be "language: cmd --args ..."')
-            io.tool_output('For example: --lint-cmd "python: flake8 --select=E9"')
+            io.tool_error(_('Unable to parse --lint-cmd "{lint_cmd}"').format(lint_cmd=lint_cmd))
+            io.tool_output(_('The arg should be "language: cmd --args ..."'))
+            io.tool_output(_('For example: --lint-cmd "python: flake8 --select=E9"'))
             err = True
     if err:
         return
@@ -273,17 +295,17 @@ def register_models(git_root, model_settings_fname, io, verbose=False):
         files_loaded = models.register_models(model_settings_files)
         if len(files_loaded) > 0:
             if verbose:
-                io.tool_output("Loaded model settings from:")
+                io.tool_output(_("Loaded model settings from:"))
                 for file_loaded in files_loaded:
                     io.tool_output(f"  - {file_loaded}")  # noqa: E221
         elif verbose:
-            io.tool_output("No model settings files loaded")
+            io.tool_output(_("No model settings files loaded"))
     except Exception as e:
-        io.tool_error(f"Error loading aider model settings: {e}")
+        io.tool_error(_("Error loading aider model settings: {e}").format(e=e))
         return 1
 
     if verbose:
-        io.tool_output("Searched for model settings files:")
+        io.tool_output(_("Searched for model settings files:"))
         for file in model_settings_files:
             io.tool_output(f"  - {file}")
 
@@ -313,9 +335,9 @@ def load_dotenv_files(git_root, dotenv_fname, encoding="utf-8"):
                 load_dotenv(fname, override=True, encoding=encoding)
                 loaded.append(fname)
         except OSError as e:
-            print(f"OSError loading {fname}: {e}")
+            print(_("OSError loading {fname}: {e}").format(fname=fname, e=e))
         except Exception as e:
-            print(f"Error loading {fname}: {e}")
+            print(_("Error loading {fname}: {e}").format(fname=fname, e=e))
     return loaded
 
 
@@ -333,11 +355,11 @@ def register_litellm_models(git_root, model_metadata_fname, io, verbose=False):
     try:
         model_metadata_files_loaded = models.register_litellm_models(model_metadata_files)
         if len(model_metadata_files_loaded) > 0 and verbose:
-            io.tool_output("Loaded model metadata from:")
+            io.tool_output(_("Loaded model metadata from:"))
             for model_metadata_file in model_metadata_files_loaded:
                 io.tool_output(f"  - {model_metadata_file}")  # noqa: E221
     except Exception as e:
-        io.tool_error(f"Error loading model metadata models: {e}")
+        io.tool_error(_("Error loading model metadata models: {e}").format(e=e))
         return 1
 
 
@@ -346,7 +368,7 @@ def sanity_check_repo(repo, io):
         return True
 
     if not repo.repo.working_tree_dir:
-        io.tool_error("The git repo does not seem to have a working tree?")
+        io.tool_error(_("The git repo does not seem to have a working tree?"))
         return False
 
     bad_ver = False
@@ -369,13 +391,16 @@ def sanity_check_repo(repo, io):
         bad_ver = True
 
     if bad_ver:
-        io.tool_error("pairforge only works with git repos with version number 1 or 2.")
-        io.tool_output("You may be able to convert your repo: git update-index --index-version=2")
-        io.tool_output("Or run aider --no-git to proceed without using git.")
-        io.offer_url(urls.git_index_version, "Open documentation url for more info?")
+        io.tool_error(_("pairforge only works with git repos with version number 1 or 2."))
+        io.tool_output(
+            _("You may be able to convert your repo: "
+              "git update-index --index-version=2")
+        )
+        io.tool_output(_("Or run aider --no-git to proceed without using git."))
+        io.offer_url(urls.git_index_version, _("Open documentation url for more info?"))
         return False
 
-    io.tool_error("Unable to read git repository, it may be corrupt?")
+    io.tool_error(_("Unable to read git repository, it may be corrupt?"))
     io.tool_output(error_msg)
     return False
 
@@ -517,7 +542,7 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
         if not io.pretty:
             raise err
         io = get_io(False)
-        io.tool_warning("Terminal does not support pretty output (UnicodeDecodeError)")
+        io.tool_warning(_("Terminal does not support pretty output (UnicodeDecodeError)"))
 
     # Process any environment variables set via --set-env
     if args.set_env:
@@ -526,8 +551,10 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
                 name, value = env_setting.split("=", 1)
                 os.environ[name.strip()] = value.strip()
             except ValueError:
-                io.tool_error(f"Invalid --set-env format: {env_setting}")
-                io.tool_output("Format should be: ENV_VAR_NAME=value")
+                io.tool_error(
+                    _("Invalid --set-env format: {env_setting}").format(env_setting=env_setting)
+                )
+                io.tool_output(_("Format should be: ENV_VAR_NAME=value"))
                 return 1
 
     # Process any API keys set via --api-key
@@ -538,8 +565,10 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
                 env_var = f"{provider.strip().upper()}_API_KEY"
                 os.environ[env_var] = key.strip()
             except ValueError:
-                io.tool_error(f"Invalid --api-key format: {api_setting}")
-                io.tool_output("Format should be: provider=key")
+                io.tool_error(
+                    _("Invalid --api-key format: {api_setting}").format(api_setting=api_setting)
+                )
+                io.tool_output(_("Format should be: provider=key"))
                 return 1
 
     if args.anthropic_api_key:
@@ -554,15 +583,15 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
         os.environ["OPENAI_API_BASE"] = args.openai_api_base
     if args.openai_api_version:
         io.tool_warning(
-            "--openai-api-version is deprecated, use --set-env OPENAI_API_VERSION=<value>"
+            _("--openai-api-version is deprecated, use --set-env OPENAI_API_VERSION=<value>")
         )
         os.environ["OPENAI_API_VERSION"] = args.openai_api_version
     if args.openai_api_type:
-        io.tool_warning("--openai-api-type is deprecated, use --set-env OPENAI_API_TYPE=<value>")
+        io.tool_warning(_("--openai-api-type is deprecated, use --set-env OPENAI_API_TYPE=<value>"))
         os.environ["OPENAI_API_TYPE"] = args.openai_api_type
     if args.openai_organization_id:
         io.tool_warning(
-            "--openai-organization-id is deprecated, use --set-env OPENAI_ORGANIZATION=<value>"
+            _("--openai-organization-id is deprecated, use --set-env OPENAI_ORGANIZATION=<value>")
         )
         os.environ["OPENAI_ORGANIZATION"] = args.openai_organization_id
 
@@ -572,7 +601,7 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
 
     if args.verbose:
         for fname in loaded_dotenvs:
-            io.tool_output(f"Loaded {fname}")
+            io.tool_output(_("Loaded {fname}").format(fname=fname))
 
     all_files = args.files + (args.file or [])
     fnames = [str(Path(fn).resolve()) for fn in all_files]
@@ -588,11 +617,12 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
         good = True
         for fname in all_files:
             if Path(fname).is_dir():
-                io.tool_error(f"{fname} is a directory, not provided alone.")
+                io.tool_error(_("{fname} is a directory, not provided alone.").format(fname=fname))
                 good = False
         if not good:
             io.tool_output(
-                "Provide either a single directory of a git repo, or a list of one or more files."
+                _("Provide either a single directory of a git repo, "
+                  "or a list of one or more files.")
             )
             analytics.event("exit", reason="Invalid directory input")
             return 1
@@ -604,7 +634,9 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
                 git_dname = str(Path(all_files[0]).resolve())
                 fnames = []
             else:
-                io.tool_error(f"{all_files[0]} is a directory, but --no-git selected.")
+                io.tool_error(
+                    _("{fname} is a directory, but --no-git selected.").format(fname=all_files[0])
+                )
                 analytics.event("exit", reason="Directory with --no-git")
                 return 1
 
@@ -642,7 +674,7 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
     interactive = not args.yes_always and sys.stdin is not None and sys.stdin.isatty()
     if not permission_trusted and interactive and not is_declined(permission_root):
         if io.confirm_ask(
-            "Do you trust this folder? Auto permission mode only works in trusted folders.",
+            _("Do you trust this folder? Auto permission mode only works in trusted folders."),
             subject=permission_root,
         ):
             trust(permission_root)
@@ -685,8 +717,8 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
             # Split on first colon only
             parts = alias_def.split(":", 1)
             if len(parts) != 2:
-                io.tool_error(f"Invalid alias format: {alias_def}")
-                io.tool_output("Format should be: alias:model-name")
+                io.tool_error(_("Invalid alias format: {alias_def}").format(alias_def=alias_def))
+                io.tool_output(_("Format should be: alias:model-name"))
                 analytics.event("exit", reason="Invalid alias format error")
                 return 1
             alias, model = parts
@@ -708,8 +740,10 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
     # Check if an OpenRouter model was selected/specified but the key is missing
     if args.model.startswith("openrouter/") and not os.environ.get("OPENROUTER_API_KEY"):
         io.tool_warning(
-            f"The specified model '{args.model}' requires an OpenRouter API key, which was not"
-            " found."
+            _("The specified model '{model}' requires an OpenRouter API key, "
+              "which was not found.").format(
+                model=args.model
+            )
         )
         # Attempt OAuth flow because the specific model needs it
         if offer_openrouter_oauth(io, analytics):
@@ -717,13 +751,13 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
             # Check if the key is now present after the flow.
             if os.environ.get("OPENROUTER_API_KEY"):
                 io.tool_output(
-                    "OpenRouter successfully connected."
+                    _("OpenRouter successfully connected.")
                 )  # Inform user connection worked
             else:
                 # This case should ideally not happen if offer_openrouter_oauth succeeded
                 # but check defensively.
                 io.tool_error(
-                    "OpenRouter authentication seemed successful, but the key is still missing."
+                    _("OpenRouter authentication seemed successful, but the key is still missing.")
                 )
                 analytics.event(
                     "exit",
@@ -733,9 +767,10 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
         else:
             # OAuth failed or was declined by the user
             io.tool_error(
-                f"Unable to proceed without an OpenRouter API key for model '{args.model}'."
+                _("Unable to proceed without an OpenRouter API key "
+                  "for model '{model}'.").format(model=args.model)
             )
-            io.offer_url(urls.models_and_keys, "Open documentation URL for more info?")
+            io.offer_url(urls.models_and_keys, _("Open documentation URL for more info?"))
             analytics.event(
                 "exit",
                 reason="OpenRouter key missing for specified model and OAuth failed/declined",
@@ -753,7 +788,7 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
     # Check if deprecated remove_reasoning is set
     if main_model.remove_reasoning is not None:
         io.tool_warning(
-            "Model setting 'remove_reasoning' is deprecated, please use 'reasoning_tag' instead."
+            _("Model setting 'remove_reasoning' is deprecated, please use 'reasoning_tag' instead.")
         )
 
     # Set reasoning effort and thinking tokens if specified
@@ -789,11 +824,15 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
                 or setting["name"] not in main_model.accepts_settings
             ):
                 io.tool_warning(
-                    f"Warning: {main_model.name} does not support '{setting['name']}', ignoring."
+                    _("Warning: {model} does not support '{setting}', ignoring.").format(
+                        model=main_model.name, setting=setting["name"]
+                    )
                 )
                 io.tool_output(
-                    f"Use --no-check-model-accepts-settings to force the '{setting['name']}'"
-                    " setting."
+                    _("Use --no-check-model-accepts-settings to force "
+                      "the '{setting}' setting.").format(
+                        setting=setting["name"]
+                    )
                 )
 
     if args.copy_paste and args.edit_format is None:
@@ -819,10 +858,10 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
         problem = models.sanity_check_models(io, main_model)
         if problem:
             analytics.event("model warning", main_model=main_model)
-            io.tool_output("You can skip this check with --no-show-model-warnings")
+            io.tool_output(_("You can skip this check with --no-show-model-warnings"))
 
             try:
-                io.offer_url(urls.model_warnings, "Open documentation url for more info?")
+                io.offer_url(urls.model_warnings, _("Open documentation url for more info?"))
                 io.tool_output()
             except KeyboardInterrupt:
                 analytics.event("exit", reason="Keyboard interrupt during model warnings")
@@ -882,7 +921,8 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
     if not main_model.streaming:
         if args.stream:
             io.tool_warning(
-                f"Warning: Streaming is not supported by {main_model.name}. Disabling streaming."
+                _("Warning: Streaming is not supported by {model}. "
+                  "Disabling streaming.").format(model=main_model.name)
             )
         args.stream = False
 
@@ -936,7 +976,7 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
         )
     except UnknownEditFormat as err:
         io.tool_error(str(err))
-        io.offer_url(urls.edit_formats, "Open documentation about edit formats?")
+        io.offer_url(urls.edit_formats, _("Open documentation about edit formats?"))
         analytics.event("exit", reason="Unknown edit format")
         return 1
     except ValueError as err:
@@ -984,7 +1024,7 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
 
     if args.test:
         if not args.test_cmd:
-            io.tool_error("No --test-cmd provided.")
+            io.tool_error(_("No --test-cmd provided."))
             analytics.event("exit", reason="No test command provided")
             return 1
         coder.commands.cmd_test(args.test_cmd)
@@ -993,7 +1033,7 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
 
     if args.commit:
         if args.dry_run:
-            io.tool_output("Dry run enabled, skipping commit.")
+            io.tool_output(_("Dry run enabled, skipping commit."))
         else:
             coder.commands.cmd_commit()
 
@@ -1026,28 +1066,30 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
         args.message = "/paste"
 
     if args.show_release_notes is True:
-        io.tool_output(f"Opening release notes: {urls.release_notes}")
+        io.tool_output(_("Opening release notes: {url}").format(url=urls.release_notes))
         io.tool_output()
         webbrowser.open(urls.release_notes)
     elif args.show_release_notes is None and is_first_run:
         io.tool_output()
         io.offer_url(
             urls.release_notes,
-            "Would you like to see what's new in this version?",
+            _("Would you like to see what's new in this version?"),
             allow_never=False,
         )
 
     if git_root and Path.cwd().resolve() != Path(git_root).resolve():
         io.tool_warning(
-            "Note: in-chat filenames are always relative to the git working dir, not the current"
-            " working dir."
+            _(
+                "Note: in-chat filenames are always relative to the git working dir, "
+                "not the current working dir."
+            )
         )
 
-        io.tool_output(f"Cur working dir: {Path.cwd()}")
-        io.tool_output(f"Git working dir: {git_root}")
+        io.tool_output(_("Cur working dir: {cwd}").format(cwd=Path.cwd()))
+        io.tool_output(_("Git working dir: {git_root}").format(git_root=git_root))
 
     if args.stream and args.cache_prompts:
-        io.tool_warning("Cost estimates may be inaccurate when using streaming and caching.")
+        io.tool_warning(_("Cost estimates may be inaccurate when using streaming and caching."))
 
     if args.load:
         commands.cmd_load(args.load)
@@ -1068,11 +1110,13 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
             io.tool_output()
             coder.run(with_message=message_from_file)
         except FileNotFoundError:
-            io.tool_error(f"Message file not found: {args.message_file}")
+            io.tool_error(
+                _("Message file not found: {message_file}").format(message_file=args.message_file)
+            )
             analytics.event("exit", reason="Message file not found")
             return 1
         except IOError as e:
-            io.tool_error(f"Error reading message file: {e}")
+            io.tool_error(_("Error reading message file: {e}").format(e=e))
             analytics.event("exit", reason="Message file IO error")
             return 1
 
@@ -1153,7 +1197,7 @@ def is_first_run_of_new_version(io, verbose=False):
         return is_first_run
 
     except Exception as e:
-        io.tool_warning(f"Error checking version: {e}")
+        io.tool_warning(_("Error checking version: {e}").format(e=e))
         if verbose:
             io.tool_output(f"Full exception details: {traceback.format_exc()}")
         return True  # Safer to assume it's a first run if we hit an error
@@ -1170,8 +1214,8 @@ def check_and_load_imports(io, is_first_run, verbose=False):
                 load_slow_imports(swallow=False)
             except Exception as err:
                 io.tool_error(str(err))
-                io.tool_output("Error loading required imports. Did you install aider properly?")
-                io.offer_url(urls.install_properly, "Open documentation url for more info?")
+                io.tool_output(_("Error loading required imports. Did you install aider properly?"))
+                io.offer_url(urls.install_properly, _("Open documentation url for more info?"))
                 sys.exit(1)
 
             if verbose:
@@ -1184,7 +1228,7 @@ def check_and_load_imports(io, is_first_run, verbose=False):
             thread.start()
 
     except Exception as e:
-        io.tool_warning(f"Error in loading imports: {e}")
+        io.tool_warning(_("Error in loading imports: {e}").format(e=e))
         if verbose:
             io.tool_output(f"Full exception details: {traceback.format_exc()}")
 
