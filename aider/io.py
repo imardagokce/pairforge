@@ -234,20 +234,20 @@ def confirm_answers():
         return {
             "words": {
                 "y": ["evet", "yes"],
-                "n": ["hayÄ±r", "hayir", "no"],
-                "a": ["tÃ¼mÃ¼", "tumu"],
+                "n": ["hayır", "hayir", "no"],
+                "a": ["tümü", "tumu"],
                 "s": ["atla"],
                 "d": ["bir daha sorma"],
             },
             "labels": {
                 "y": "(E)vet",
-                "n": "(H)ayÄ±r",
-                "a": "(T)Ã¼mÃ¼",
+                "n": "(H)ayır",
+                "a": "(T)ümü",
                 "s": "(A)tla hepsi",
                 "d": "(B)ir daha sorma",
             },
             "default_yes": "Evet",
-            "default_no": "HayÄ±r",
+            "default_no": "Hayır",
         }
     return {
         "words": {"y": ["yes"], "n": ["no"], "a": ["all"], "s": ["skip"], "d": ["don't"]},
