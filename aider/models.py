@@ -822,6 +822,12 @@ class Model(ModelSettings):
     def get_repo_map_tokens(self):
         map_tokens = 1024
         max_inp_tokens = self.info.get("max_input_tokens")
+
+        from aider.local_models import local_model_preset
+
+        if max_inp_tokens and local_model_preset(self.name):
+            # Local models: 5% of the window, so an 8K model is not handed a 1K map
+            return min(max(int(max_inp_tokens * 0.05), 512), 4096)
         if max_inp_tokens:
             map_tokens = max_inp_tokens / 8
             map_tokens = min(map_tokens, 4096)

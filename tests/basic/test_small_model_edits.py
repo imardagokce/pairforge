@@ -98,3 +98,21 @@ class TestMalformedEditFallback(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestRepoMapTokensFromCli(unittest.TestCase):
+    """main.py takes map_tokens from Model.get_repo_map_tokens(), so the rule must live there."""
+
+    def test_local_models_use_five_percent_of_window(self):
+        from aider.models import Model
+
+        self.assertEqual(Model("ollama_chat/qwen2.5-coder:7b").get_repo_map_tokens(), 1638)
+        self.assertEqual(Model("ollama_chat/llama3:8b").get_repo_map_tokens(), 512)
+
+    def test_cloud_models_keep_upstream_rule(self):
+        from aider.models import Model
+
+        model = Model("gpt-4o")
+        window = model.info.get("max_input_tokens")
+        expected = min(max(window / 8, 1024), 4096) if window else 1024
+        self.assertEqual(model.get_repo_map_tokens(), expected)
