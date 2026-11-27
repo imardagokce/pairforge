@@ -67,13 +67,22 @@ What the inherited codebase already provides (found by mapping the source), so w
 - [x] A `--permission-mode auto` (and `/permissions`) that, inside a trusted folder, stops asking before adding files, creating or editing files, running shell commands and similar actions. The default mode `ask` keeps today's behavior. **Done**
 - [x] A one-time "Trust this folder?" question when pairforge starts in a folder it has not seen before; the answer is remembered. **Done**
 - [x] `/permissions trust` and `/permissions untrust` change a folder's trust during a session, so a "no" answer is not permanent. **Done**
-- [ ] Respect the model's context size: add small files in full, and give an outline for large ones instead of overflowing small local models or wasting paid tokens. **Done** (in auto mode a mentioned file that fits in 25% of the context window is added in full; a larger one is sent as an outline of its classes and functions, built from the repo map, with a note to `/add` it for editing)
+- [x] Respect the model's context size: add small files in full, and give an outline for large ones instead of overflowing small local models or wasting paid tokens. **Done** (in auto mode a mentioned file that fits in 25% of the context window is added in full; a larger one is sent as an outline of its classes and functions, built from the repo map, with a note to `/add` it for editing)
+- [x] No routine questions in auto mode: creating the git repo, updating `.gitignore`, opening documentation links (printed instead), sending a request near the context limit, `/lint` fixes and creating files named in `/add`. The analytics opt-in question is gone (off unless `--analytics`). Installing packages still asks. **Done**
 - [ ] Optional graphify integration (an install extra, not a hard dependency) so reading a folder or file uses a code graph and targeted queries rather than raw file contents. **Planned**
 
 ### 9. Plan-first workflow
 **Goal:** for larger tasks, work the way a careful engineer does: plan, split the work, then code.
-- [ ] Build on the existing architect/editor mode: first a short plan, then a task breakdown, then the edits for each task. **Planned**
-- [ ] Show the plan and task list as they progress, and in `auto` permission mode run through them without stopping to ask. **Planned**
+- [x] `/plan <request>`: a numbered plan of at most 8 small steps, then the edits for each step with the whole plan as context. **Done**
+- [x] Show the plan and task list as they progress, and in `auto` permission mode run through them without stopping to ask (ask mode confirms once). **Done**
+
+### 11. Small local models (up to about 17B)
+**Goal:** models that fit on a laptop should edit code reliably.
+- [x] Compact prompts: no example conversation and a shorter main system prompt for local models of 17B or fewer (`--compact-prompts` / `--no-compact-prompts`); the edit format rules stay verbatim. **Done**
+- [x] Cap Ollama's `num_ctx` at the model's context window so requests do not overflow VRAM. **Done**
+- [x] Fall back to the whole edit format, once per session, when a local model sends malformed edits twice in one request, and retry the request. **Done**
+- [x] Repo map sized to 5% of a local model's window (512 to 4096 tokens). **Done**
+- [x] Add `/no_think` to the request for local qwen3 models when the reasoning effort is low. **Done**
 
 ## Working principles
 

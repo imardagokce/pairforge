@@ -432,8 +432,8 @@ class TestModels(unittest.TestCase):
 
         model.send_completion(messages, functions=None, stream=False)
 
-        # Verify num_ctx was calculated and added to call
-        expected_ctx = int(1000 * 1.25) + 8192  # 9442
+        # num_ctx is int(1000 * 1.25) + 8192 = 9442, capped at llama3's 8192 window (local preset)
+        expected_ctx = 8192
         mock_completion.assert_called_once_with(
             model=model.name,
             messages=messages,
