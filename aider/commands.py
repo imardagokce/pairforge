@@ -25,7 +25,15 @@ from aider.local_models import (
     list_ollama_models,
     list_openai_compatible_models,
 )
-from aider.permissions import MODES, PermissionPolicy, is_trusted
+from aider.permissions import (
+    MODES,
+    TRUST_ACTIONS,
+    PermissionPolicy,
+    is_trusted,
+    trust,
+    trusted_entry,
+    untrust,
+)
 from aider.repo import ANY_GIT_ERROR
 from aider.run_cmd import run_cmd
 from aider.scrape import Scraper, install_playwright
@@ -1772,9 +1780,12 @@ class Commands:
         announcements = "\n".join(self.coder.get_announcements())
         self.io.tool_output(announcements)
 
+    def completions_permissions(self):
+        return list(MODES + TRUST_ACTIONS)
+
     def cmd_permissions(self, args):
-        "Show or set the permission mode: /permissions [ask|auto]"
-        usage = "Usage: /permissions [ask|auto]"
+        "Set the permission mode or folder trust: /permissions [ask|auto|trust|untrust]"
+        usage = "Usage: /permissions [ask|auto|trust|untrust]"
         value = (args or "").strip().lower()
 
         policy = self.coder.permission_policy
@@ -1794,13 +1805,35 @@ class Commands:
                     )
             return
 
-        if value not in MODES:
+        if value not in MODES + TRUST_ACTIONS:
             self.io.tool_error(usage)
             return
 
         if policy is None:
-            policy = PermissionPolicy(root=self.coder.root)
+            policy = PermissionPolicy(root=self.coder.root, trusted=is_trusted(self.coder.root))
             self.coder.permission_policy = policy
+
+        if value == "trust":
+            trust(policy.root)
+            policy.trusted = True
+            self.io.tool_output(f"Trusted folder: {policy.root}")
+            if policy.mode == "auto":
+                self.io.tool_output("Auto mode is now in effect for this folder.")
+            return
+
+        if value == "untrust":
+            untrust(policy.root)
+            parent = trusted_entry(policy.root)
+            policy.trusted = parent is not None
+            if parent:
+                self.io.tool_warning(
+                    f"Removed trust for {policy.root}, but it is still trusted through {parent}."
+                    " Run /permissions untrust from that folder to remove it."
+                )
+            else:
+                self.io.tool_output(f"No longer trusted: {policy.root}")
+            return
+
         policy.mode = value
         self.io.tool_output(f"Permission mode set to {value}")
 

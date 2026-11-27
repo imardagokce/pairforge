@@ -19,6 +19,8 @@ from aider.permissions import (
     is_trusted,
     path_inside,
     trust,
+    trusted_entry,
+    untrust,
 )
 from aider.utils import GitTemporaryDirectory
 
@@ -108,6 +110,28 @@ class TestTrustStore(TrustStoreTestBase):
 
         self.assertTrue(is_trusted(root))
         self.assertFalse(is_declined(root))
+
+    def test_untrust_removes_entry_and_declines(self):
+        root = Path(self.tempdir) / "project"
+        other = Path(self.tempdir) / "other"
+        root.mkdir()
+        other.mkdir()
+        trust(root)
+        trust(other)
+        untrust(root)
+
+        self.assertFalse(is_trusted(root))
+        self.assertTrue(is_declined(root))
+        self.assertTrue(is_trusted(other))
+
+    def test_trusted_entry_names_the_matching_parent(self):
+        root = Path(self.tempdir) / "project"
+        nested = root / "sub"
+        nested.mkdir(parents=True)
+        self.assertIsNone(trusted_entry(nested))
+
+        trust(root)
+        self.assertEqual(trusted_entry(nested), str(root.resolve()))
 
     def test_path_inside(self):
         root = Path(self.tempdir) / "project"
@@ -226,8 +250,58 @@ class TestPermissionsCommand(TrustStoreTestBase):
             commands.cmd_permissions("bogus")
 
             io.tool_error.assert_called_once()
-            self.assertIn("/permissions [ask|auto]", io.tool_error.call_args[0][0])
+            self.assertIn("/permissions [ask|auto|trust|untrust]", io.tool_error.call_args[0][0])
             self.assertEqual(coder.permission_policy.mode, "ask")
+
+    def test_trust_trusts_root_and_enables_auto(self):
+        with GitTemporaryDirectory():
+            commands, coder, io = self.make_commands("auto", False)
+            decline(coder.root)
+            commands.cmd_permissions("trust")
+
+            self.assertTrue(coder.permission_policy.trusted)
+            self.assertTrue(coder.permission_policy.auto_allows_action())
+            self.assertTrue(is_trusted(coder.root))
+            self.assertFalse(is_declined(coder.root))
+
+    def test_trust_creates_policy_when_missing(self):
+        with GitTemporaryDirectory():
+            commands, coder, io = self.make_commands()
+            commands.cmd_permissions("trust")
+
+            self.assertIsNotNone(coder.permission_policy)
+            self.assertEqual(coder.permission_policy.mode, "ask")
+            self.assertTrue(coder.permission_policy.trusted)
+
+    def test_untrust_removes_trust_and_marks_declined(self):
+        with GitTemporaryDirectory():
+            commands, coder, io = self.make_commands("auto", True)
+            trust(coder.root)
+            commands.cmd_permissions("untrust")
+
+            self.assertFalse(coder.permission_policy.trusted)
+            self.assertFalse(coder.permission_policy.auto_allows_action())
+            self.assertFalse(is_trusted(coder.root))
+            self.assertTrue(is_declined(coder.root))
+            io.tool_warning.assert_not_called()
+
+    def test_untrust_warns_when_parent_is_trusted(self):
+        with GitTemporaryDirectory():
+            commands, coder, io = self.make_commands("auto", True)
+            parent = Path(coder.root).resolve().parent
+            trust(parent)
+            commands.cmd_permissions("untrust")
+
+            self.assertTrue(coder.permission_policy.trusted)
+            io.tool_warning.assert_called_once()
+            self.assertIn(str(parent), io.tool_warning.call_args[0][0])
+
+    def test_completions(self):
+        with GitTemporaryDirectory():
+            commands, coder, io = self.make_commands()
+            self.assertEqual(
+                sorted(commands.completions_permissions()), ["ask", "auto", "trust", "untrust"]
+            )
 
 
 class TestCoderPermissions(unittest.TestCase):

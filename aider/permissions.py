@@ -7,6 +7,7 @@ from pathlib import Path
 
 MODES = ("ask", "auto")
 DEFAULT_MODE = "ask"
+TRUST_ACTIONS = ("trust", "untrust")
 
 
 def trust_file_path():
@@ -62,9 +63,17 @@ def path_inside(root, path):
     return True
 
 
-def is_trusted(path):
+def trusted_entry(path):
+    """The trusted folder that covers path (itself or a parent), or None."""
     path = Path(path).resolve()
-    return any(path_inside(entry, path) for entry in _load()["trusted"])
+    for entry in _load()["trusted"]:
+        if path_inside(entry, path):
+            return entry
+    return None
+
+
+def is_trusted(path):
+    return trusted_entry(path) is not None
 
 
 def is_declined(path):
@@ -78,6 +87,16 @@ def trust(path):
     if resolved not in data["trusted"]:
         data["trusted"].append(resolved)
     data["declined"] = [p for p in data["declined"] if p != resolved]
+    _save(data)
+
+
+def untrust(path):
+    """Stop trusting exactly this folder and remember the answer, so startup does not ask again."""
+    resolved = str(Path(path).resolve())
+    data = _load()
+    data["trusted"] = [p for p in data["trusted"] if p != resolved]
+    if resolved not in data["declined"]:
+        data["declined"].append(resolved)
     _save(data)
 
 
