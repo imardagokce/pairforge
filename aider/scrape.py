@@ -5,6 +5,7 @@ import sys
 
 import pypandoc
 
+from aider.i18n import _
 from aider import __version__, urls, utils
 from aider.dump import dump  # noqa: F401
 
@@ -60,7 +61,7 @@ See {urls.enable_playwright} for more info.
 
     io.tool_output(text)
     # explicit_yes_required: --yes-always must never install packages on its own
-    if not io.confirm_ask("Install playwright?", default="y", explicit_yes_required=True):
+    if not io.confirm_ask(_("Install playwright?"), default="y", explicit_yes_required=True):
         return
 
     if not has_pip:
@@ -170,7 +171,7 @@ class Scraper:
                 try:
                     response = page.goto(url, wait_until="networkidle", timeout=5000)
                 except PlaywrightTimeoutError:
-                    print(f"Page didn't quiesce, scraping content anyway: {url}")
+                    print(_("Page didn't quiesce, scraping content anyway: {url}").format(url=url))
                     response = None
                 except PlaywrightError as e:
                     self.print_error(f"Error navigating to {url}: {str(e)}")

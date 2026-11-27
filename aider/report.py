@@ -6,6 +6,7 @@ import traceback
 import urllib.parse
 import webbrowser
 
+from aider.i18n import _
 from aider import __version__
 from aider.urls import github_issues
 from aider.versioncheck import VERSION_CHECK_FNAME
@@ -66,7 +67,7 @@ def report_github_issue(issue_text, title=None, confirm=True):
         print(f"\n# {title}\n")
         print(issue_text.strip())
         print()
-        print("Please consider reporting this bug to help improve aider!")
+        print(_("Please consider reporting this bug to help improve aider!"))
         prompt = "Open a GitHub Issue pre-filled with the above error in your browser? (Y/n) "
         confirmation = input(prompt).strip().lower()
 
@@ -74,17 +75,17 @@ def report_github_issue(issue_text, title=None, confirm=True):
         if not yes:
             return
 
-    print("Attempting to open the issue URL in your default web browser...")
+    print(_("Attempting to open the issue URL in your default web browser..."))
     try:
         if webbrowser.open(issue_url):
-            print("Browser window should be opened.")
+            print(_("Browser window should be opened."))
     except Exception:
         pass
 
     if confirm:
         print()
         print()
-        print("You can also use this URL to file the GitHub Issue:")
+        print(_("You can also use this URL to file the GitHub Issue:"))
         print()
         print(issue_url)
         print()
@@ -186,11 +187,11 @@ def main():
         issue_text = sys.argv[1]
     else:
         # Read from stdin if no argument is provided
-        print("Enter the issue title (optional, press Enter to skip):")
+        print(_("Enter the issue title (optional, press Enter to skip):"))
         title = input().strip()
         if not title:
             title = None
-        print("Enter the issue text (Ctrl+D to finish):")
+        print(_("Enter the issue text (Ctrl+D to finish):"))
         issue_text = sys.stdin.read().strip()
 
     report_github_issue(issue_text, title)

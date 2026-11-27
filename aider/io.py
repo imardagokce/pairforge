@@ -234,20 +234,20 @@ def confirm_answers():
         return {
             "words": {
                 "y": ["evet", "yes"],
-                "n": ["hayÄ±r", "hayir", "no"],
-                "a": ["tÃ¼mÃ¼", "tumu"],
+                "n": ["hayır", "hayir", "no"],
+                "a": ["tümü", "tumu"],
                 "s": ["atla"],
                 "d": ["bir daha sorma"],
             },
             "labels": {
                 "y": "(E)vet",
-                "n": "(H)ayÄ±r",
-                "a": "(T)Ã¼mÃ¼",
+                "n": "(H)ayır",
+                "a": "(T)ümü",
                 "s": "(A)tla hepsi",
                 "d": "(B)ir daha sorma",
             },
             "default_yes": "Evet",
-            "default_no": "HayÄ±r",
+            "default_no": "Hayır",
         }
     return {
         "words": {"y": ["yes"], "n": ["no"], "a": ["all"], "s": ["skip"], "d": ["don't"]},
@@ -348,7 +348,9 @@ class InputOutput:
             try:
                 Path(self.input_history_file).parent.mkdir(parents=True, exist_ok=True)
             except (PermissionError, OSError) as e:
-                self.tool_warning(f"Could not create directory for input history: {e}")
+                self.tool_warning(
+                    _("Could not create directory for input history: {e}").format(e=e)
+                )
                 self.input_history_file = None
         self.llm_history_file = llm_history_file
         if chat_history_file is not None:
@@ -395,11 +397,15 @@ class InputOutput:
                 self.console = Console()  # pretty console
             except Exception as err:
                 self.console = Console(force_terminal=False, no_color=True)
-                self.tool_error(f"Can't initialize prompt toolkit: {err}")  # non-pretty
+                self.tool_error(
+                    _("Can't initialize prompt toolkit: {err}").format(err=err)
+                )  # non-pretty
         else:
             self.console = Console(force_terminal=False, no_color=True)  # non-pretty
             if self.is_dumb_terminal:
-                self.tool_output("Detected dumb terminal, disabling fancy input and pretty output.")
+                self.tool_output(
+                    _("Detected dumb terminal, disabling fancy input and pretty output.")
+                )
 
         self.file_watcher = file_watcher
         self.root = root
@@ -474,16 +480,18 @@ class InputOutput:
                 encoded_string = base64.b64encode(image_file.read())
                 return encoded_string.decode("utf-8")
         except OSError as err:
-            self.tool_error(f"{filename}: unable to read: {err}")
+            self.tool_error(
+                _("{filename}: unable to read: {err}").format(filename=filename, err=err)
+            )
             return
         except FileNotFoundError:
-            self.tool_error(f"{filename}: file not found error")
+            self.tool_error(_("{filename}: file not found error").format(filename=filename))
             return
         except IsADirectoryError:
-            self.tool_error(f"{filename}: is a directory")
+            self.tool_error(_("{filename}: is a directory").format(filename=filename))
             return
         except Exception as e:
-            self.tool_error(f"{filename}: {e}")
+            self.tool_error(_("{filename}: {e}").format(filename=filename, e=e))
             return
 
     def read_text(self, filename, silent=False):
@@ -495,20 +503,22 @@ class InputOutput:
                 return f.read()
         except FileNotFoundError:
             if not silent:
-                self.tool_error(f"{filename}: file not found error")
+                self.tool_error(_("{filename}: file not found error").format(filename=filename))
             return
         except IsADirectoryError:
             if not silent:
-                self.tool_error(f"{filename}: is a directory")
+                self.tool_error(_("{filename}: is a directory").format(filename=filename))
             return
         except OSError as err:
             if not silent:
-                self.tool_error(f"{filename}: unable to read: {err}")
+                self.tool_error(
+                    _("{filename}: unable to read: {err}").format(filename=filename, err=err)
+                )
             return
         except UnicodeError as e:
             if not silent:
-                self.tool_error(f"{filename}: {e}")
-                self.tool_error("Use --encoding to set the unicode encoding.")
+                self.tool_error(_("{filename}: {e}").format(filename=filename, e=e))
+                self.tool_error(_("Use --encoding to set the unicode encoding."))
             return
 
     def write_text(self, filename, content, max_retries=5, initial_delay=0.1):
@@ -535,11 +545,16 @@ class InputOutput:
                     delay *= 2  # Exponential backoff
                 else:
                     self.tool_error(
-                        f"Unable to write file {filename} after {max_retries} attempts: {err}"
+                        _("Unable to write file {filename} after {max_retries} "
+                          "attempts: {err}").format(
+                            filename=filename, max_retries=max_retries, err=err
+                        )
                     )
                     raise
             except OSError as err:
-                self.tool_error(f"Unable to write file {filename}: {err}")
+                self.tool_error(
+                    _("Unable to write file {filename}: {err}").format(filename=filename, err=err)
+                )
                 raise
 
     def rule(self):
@@ -780,7 +795,7 @@ class InputOutput:
             if self.prompt_session and self.prompt_session.history:
                 self.prompt_session.history.append_string(inp)
         except OSError as err:
-            self.tool_warning(f"Unable to write to input history file: {err}")
+            self.tool_warning(_("Unable to write to input history file: {err}").format(err=err))
 
     def get_input_history(self):
         if not self.input_history_file:
@@ -799,7 +814,11 @@ class InputOutput:
                 log_file.write(f"{role.upper()} {timestamp}\n")
                 log_file.write(content + "\n")
         except (PermissionError, OSError) as err:
-            self.tool_warning(f"Unable to write to llm history file {self.llm_history_file}: {err}")
+            self.tool_warning(
+                _("Unable to write to llm history file {llm_history_file}: {err}").format(
+                    llm_history_file=self.llm_history_file, err=err
+                )
+            )
             self.llm_history_file = None
 
     def display_user_input(self, inp):
@@ -844,7 +863,7 @@ class InputOutput:
         if url in self.never_prompts:
             return False
         if self.auto_mode():
-            self.tool_output(f"More info: {url}")
+            self.tool_output(_("More info: {url}").format(url=url))
             return False
         if self.confirm_ask(prompt, subject=url, allow_never=allow_never):
             webbrowser.open(url)
@@ -1080,7 +1099,7 @@ class InputOutput:
 
     def assistant_output(self, message, pretty=None):
         if not message:
-            self.tool_warning("Empty response received from LLM. Check your provider account?")
+            self.tool_warning(_("Empty response received from LLM. Check your provider account?"))
             return
 
         show_resp = message
@@ -1154,9 +1173,13 @@ class InputOutput:
                     )
                     if result.returncode != 0 and result.stderr:
                         error_msg = result.stderr.decode("utf-8", errors="replace")
-                        self.tool_warning(f"Failed to run notifications command: {error_msg}")
+                        self.tool_warning(
+                            _("Failed to run notifications command: {error_msg}").format(
+                                error_msg=error_msg
+                            )
+                        )
                 except Exception as e:
-                    self.tool_warning(f"Failed to run notifications command: {e}")
+                    self.tool_warning(_("Failed to run notifications command: {e}").format(e=e))
             else:
                 print("\a", end="", flush=True)  # Ring the bell
             self.bell_on_next_input = False  # Clear the flag
@@ -1166,11 +1189,11 @@ class InputOutput:
         self.multiline_mode = not self.multiline_mode
         if self.multiline_mode:
             self.tool_output(
-                "Multiline mode: Enabled. Enter inserts newline, Alt-Enter submits text"
+                _("Multiline mode: Enabled. Enter inserts newline, Alt-Enter submits text")
             )
         else:
             self.tool_output(
-                "Multiline mode: Disabled. Alt-Enter inserts newline, Enter submits text"
+                _("Multiline mode: Disabled. Alt-Enter inserts newline, Enter submits text")
             )
 
     def append_chat_history(self, text, linebreak=False, blockquote=False, strip=True):
@@ -1190,7 +1213,12 @@ class InputOutput:
                 with self.chat_history_file.open("a", encoding=self.encoding, errors="ignore") as f:
                     f.write(text)
             except (PermissionError, OSError) as err:
-                print(f"Warning: Unable to write to chat history file {self.chat_history_file}.")
+                print(
+                    _(
+                        "Warning: Unable to write to chat history file "
+                        "{chat_history_file}."
+                    ).format(chat_history_file=self.chat_history_file)
+                )
                 print(err)
                 self.chat_history_file = None  # Disable further attempts to write
 

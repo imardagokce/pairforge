@@ -11,6 +11,7 @@ import oslex
 from grep_ast import TreeContext, filename_to_lang
 from grep_ast.tsl import get_parser  # noqa: E402
 
+from aider.i18n import _
 from aider.dump import dump  # noqa: F401
 from aider.run_cmd import run_cmd_subprocess  # noqa: F401
 
@@ -56,7 +57,7 @@ class Linter:
                 encoding=self.encoding,
             )
         except OSError as err:
-            print(f"Unable to execute lint command: {err}")
+            print(_("Unable to execute lint command: {err}").format(err=err))
             return
         errors = stdout
         if returncode == 0:
@@ -84,7 +85,7 @@ class Linter:
         try:
             code = Path(fname).read_text(encoding=self.encoding, errors="replace")
         except OSError as err:
-            print(f"Unable to read {fname}: {err}")
+            print(_("Unable to read {fname}: {err}").format(fname=fname, err=err))
             return
 
         if cmd:
@@ -214,7 +215,7 @@ def basic_lint(fname, code):
     try:
         parser = get_parser(lang)
     except Exception as err:
-        print(f"Unable to load parser: {err}")
+        print(_("Unable to load parser: {err}").format(err=err))
         return
 
     tree = parser.parse(bytes(code, "utf-8"))
@@ -222,7 +223,7 @@ def basic_lint(fname, code):
     try:
         errors = traverse_tree(tree.root_node)
     except RecursionError:
-        print(f"Unable to lint {fname} due to RecursionError")
+        print(_("Unable to lint {fname} due to RecursionError").format(fname=fname))
         return
 
     if not errors:

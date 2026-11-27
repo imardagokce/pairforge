@@ -4,6 +4,8 @@ from concurrent.futures import ThreadPoolExecutor
 
 import requests
 
+from aider.i18n import _
+
 DEFAULT_OLLAMA_BASE = "http://127.0.0.1:11434"
 DEFAULT_LM_STUDIO_BASE = "http://127.0.0.1:1234/v1"
 DEFAULT_LLAMA_CPP_BASE = "http://127.0.0.1:8080/v1"
@@ -90,11 +92,18 @@ def list_ollama_models(base_url=None, timeout=3):
     try:
         response = requests.get(url, timeout=timeout)
     except requests.RequestException:
-        raise LocalModelError(f"Could not reach Ollama at {base_url}. Is `ollama serve` running?")
+        raise LocalModelError(
+            _(
+                "Could not reach Ollama at {base_url}. "
+                "Is `ollama serve` running?"
+            ).format(base_url=base_url)
+        )
 
     if response.status_code != 200:
         raise LocalModelError(
-            f"Ollama at {base_url} returned HTTP {response.status_code} for /api/tags."
+            _("Ollama at {base_url} returned HTTP {status} for /api/tags.").format(
+                base_url=base_url, status=response.status_code
+            )
         )
 
     try:
@@ -109,7 +118,10 @@ def list_ollama_models(base_url=None, timeout=3):
                 }
             )
     except (ValueError, KeyError, TypeError):
-        raise LocalModelError(f"Ollama at {base_url} returned an unexpected response.")
+        raise LocalModelError(
+            _("Ollama at {base_url} returned an unexpected "
+              "response.").format(base_url=base_url)
+        )
 
     return models
 
@@ -124,11 +136,15 @@ def list_openai_compatible_models(base_url, api_key=None, timeout=3):
         response = requests.get(url, headers=headers, timeout=timeout)
     except requests.RequestException:
         raise LocalModelError(
-            f"Could not reach an OpenAI-compatible server at {base_url}. Is it running?"
+            _("Could not reach an OpenAI-compatible server at {base_url}. Is it running?").format(
+                base_url=base_url
+            )
         )
 
     if response.status_code in (401, 403):
-        raise LocalModelError(f"The API key was rejected by {url} (HTTP {response.status_code}).")
+        raise LocalModelError(_("The API key was rejected by {url} (HTTP {status}).").format(
+            url=url, status=response.status_code
+        ))
     if response.status_code != 200:
         raise LocalModelError(f"{url} returned HTTP {response.status_code}.")
 
@@ -191,15 +207,19 @@ def choose_local_model(servers, wanted=None):
     """
     if not servers:
         raise LocalModelError(
-            "No local model servers found. Start Ollama, LM Studio or a llama.cpp server,"
-            " then try again."
+            _(
+                "No local model servers found. Start Ollama, LM Studio or a llama.cpp server,"
+                " then try again."
+            )
         )
 
     candidates = [(model, server) for server in servers for model in server["models"]]
     if not candidates:
         raise LocalModelError(
-            "Local servers are running but have no models. Pull or load one first,"
-            " for example: ollama pull qwen2.5-coder:7b"
+            _(
+                "Local servers are running but have no models. Pull or load one first,"
+                " for example: ollama pull qwen2.5-coder:7b"
+            )
         )
 
     if wanted:
@@ -207,7 +227,12 @@ def choose_local_model(servers, wanted=None):
             if model == wanted or model.split("/", 1)[-1] == wanted:
                 return model, server
         available = ", ".join(model for model, _ in candidates)
-        raise LocalModelError(f"Local model {wanted} was not found. Available: {available}")
+        raise LocalModelError(
+            _(
+                "Local model {wanted} was not found. "
+                "Available: {available}"
+            ).format(wanted=wanted, available=available)
+        )
 
     def rank(item):
         model, server = item
@@ -236,7 +261,11 @@ def apply_local_quickstart(args, io, discover=None):
             io.tool_error(str(err))
             return False
         args.model = model
-        io.tool_output(f"Using local model {model} from {server['name']} at {server['base_url']}")
+        io.tool_output(
+            _("Using local model {model} from {name} at {base_url}").format(
+                model=model, name=server["name"], base_url=server["base_url"]
+            )
+        )
         if server["name"] == "LM Studio" and not os.environ.get("LM_STUDIO_API_BASE"):
             os.environ["LM_STUDIO_API_BASE"] = server["base_url"]
         elif server["name"] == "llama.cpp":
@@ -248,7 +277,7 @@ def apply_local_quickstart(args, io, discover=None):
     known = exact_match or local_model_preset(args.model) is not None
     if args.edit_format is None and not known:
         args.edit_format = "whole"
-        io.tool_output("Using the whole edit format, which small models handle most reliably.")
+        io.tool_output(_("Using the whole edit format, which small models handle most reliably."))
 
     if args.permission_mode is None:
         args.permission_mode = "auto"

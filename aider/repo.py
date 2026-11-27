@@ -18,6 +18,7 @@ except ImportError:
 
 import pathspec
 
+from aider.i18n import _
 from aider import prompts, utils
 
 from .dump import dump  # noqa: F401
@@ -118,7 +119,7 @@ class GitRepo:
         if num_repos == 0:
             raise FileNotFoundError
         if num_repos > 1:
-            self.io.tool_error("Files are in different git repos.")
+            self.io.tool_error(_("Files are in different git repos."))
             raise FileNotFoundError
 
         # https://github.com/gitpython-developers/GitPython/issues/427
@@ -283,7 +284,9 @@ class GitRepo:
                 try:
                     self.repo.git.add(fname)
                 except ANY_GIT_ERROR as err:
-                    self.io.tool_error(f"Unable to add {fname}: {err}")
+                    self.io.tool_error(
+                        _("Unable to add {fname}: {err}").format(fname=fname, err=err)
+                    )
             cmd += ["--"] + fnames
         else:
             cmd += ["-a"]
@@ -310,11 +313,13 @@ class GitRepo:
                 # Perform the commit
                 self.repo.git.commit(cmd)
                 commit_hash = self.get_head_commit_sha(short=True)
-                self.io.tool_output(f"Commit {commit_hash} {commit_message}", bold=True)
+                self.io.tool_output(_("Commit {commit_hash} {commit_message}").format(
+                    commit_hash=commit_hash, commit_message=commit_message
+                ), bold=True)
                 return commit_hash, commit_message
 
         except ANY_GIT_ERROR as err:
-            self.io.tool_error(f"Unable to commit: {err}")
+            self.io.tool_error(_("Unable to commit: {err}").format(err=err))
             # No return here, implicitly returns None
 
     def get_rel_repo_dir(self):
@@ -363,7 +368,7 @@ class GitRepo:
                     break  # Found a model that could generate the message
 
         if not commit_message:
-            self.io.tool_error("Failed to generate commit message!")
+            self.io.tool_error(_("Failed to generate commit message!"))
             return
 
         commit_message = commit_message.strip()
@@ -414,7 +419,7 @@ class GitRepo:
 
             return diffs
         except ANY_GIT_ERROR as err:
-            self.io.tool_error(f"Unable to diff: {err}")
+            self.io.tool_error(_("Unable to diff: {err}").format(err=err))
 
     def diff_commits(self, pretty, from_commit, to_commit):
         args = []
@@ -440,8 +445,8 @@ class GitRepo:
             commit = None
         except ANY_GIT_ERROR as err:
             self.git_repo_error = err
-            self.io.tool_error(f"Unable to list files in git repo: {err}")
-            self.io.tool_output("Is your git repo corrupted?")
+            self.io.tool_error(_("Unable to list files in git repo: {err}").format(err=err))
+            self.io.tool_output(_("Is your git repo corrupted?"))
             return []
 
         files = set()
@@ -469,8 +474,8 @@ class GitRepo:
                             break
                 except ANY_GIT_ERROR as err:
                     self.git_repo_error = err
-                    self.io.tool_error(f"Unable to list files in git repo: {err}")
-                    self.io.tool_output("Is your git repo corrupted?")
+                    self.io.tool_error(_("Unable to list files in git repo: {err}").format(err=err))
+                    self.io.tool_output(_("Is your git repo corrupted?"))
                     return []
                 files = set(self.normalize_path(path) for path in files)
                 self.tree_files[commit] = set(files)
@@ -481,7 +486,7 @@ class GitRepo:
             staged_files = [path for path, _ in index.entries.keys()]
             files.update(self.normalize_path(path) for path in staged_files)
         except ANY_GIT_ERROR as err:
-            self.io.tool_error(f"Unable to read staged files: {err}")
+            self.io.tool_error(_("Unable to read staged files: {err}").format(err=err))
 
         res = [fname for fname in files if not self.ignored_file(fname)]
 
