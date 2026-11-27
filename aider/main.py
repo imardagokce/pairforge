@@ -444,10 +444,6 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
     if git is None:
         args.git = False
 
-    if args.analytics_disable:
-        analytics = Analytics(permanently_disable=True)
-        print("Analytics have been permanently disabled.")
-
     if not args.verify_ssl:
         import httpx
 
@@ -565,22 +561,7 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
         )
         os.environ["OPENAI_ORGANIZATION"] = args.openai_organization_id
 
-    analytics = Analytics(
-        logfile=args.analytics_log,
-        permanently_disable=args.analytics_disable,
-        posthog_host=args.analytics_posthog_host,
-        posthog_project_api_key=args.analytics_posthog_project_api_key,
-    )
-    if args.analytics is not False:
-        if analytics.need_to_ask(args.analytics):
-            # pairforge never asks: analytics stay off unless --analytics is given.
-            analytics.asked_opt_in = True
-            if not args.analytics:
-                analytics.disable(permanently=True)
-            analytics.save_data()
-
-        # This is a no-op if the user has opted out
-        analytics.enable()
+    analytics = Analytics()
 
     analytics.event("launched")
 
