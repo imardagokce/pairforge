@@ -3,6 +3,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Dict, List, Optional, Tuple
 
+from aider.i18n import _
+
 from .base_coder import Coder
 from .patch_prompts import PatchPrompts
 
@@ -243,11 +245,11 @@ class PatchCoder(Coder):
             )
             if not is_patch_like:
                 # If it doesn't even look like a patch, return empty
-                self.io.tool_warning("Response does not appear to be in patch format.")
+                self.io.tool_warning(_("Response does not appear to be in patch format."))
                 return []
             # If it looks like a patch but lacks sentinels, try parsing anyway but warn.
             self.io.tool_warning(
-                "Patch format warning: Missing '*** Begin Patch'/'*** End Patch' sentinels."
+                _("Patch format warning: Missing '*** Begin Patch'/'*** End Patch' sentinels.")
             )
             start_index = 0
         else:
@@ -363,7 +365,9 @@ class PatchCoder(Coder):
                 if existing_action:
                     if existing_action.type == ActionType.DELETE:
                         # Duplicate delete – ignore the extra block
-                        self.io.tool_warning(f"Duplicate delete action for file: {path} ignored.")
+                        self.io.tool_warning(
+                            _("Duplicate delete action for file: {path} ignored.").format(path=path)
+                        )
                         continue
                     else:
                         raise DiffError(f"Conflicting actions for file: {path}")
@@ -571,7 +575,7 @@ class PatchCoder(Coder):
                         # Parser should ensure this doesn't happen
                         raise DiffError(f"ADD change for {action.path} has no content")
 
-                    self.io.tool_output(f"Adding {action.path}")
+                    self.io.tool_output(_("Adding {path}").format(path=action.path))
                     path_obj.parent.mkdir(parents=True, exist_ok=True)
                     # Ensure single trailing newline, matching reference behavior
                     content_to_write = action.new_content
@@ -580,10 +584,12 @@ class PatchCoder(Coder):
                     self.io.write_text(full_path, content_to_write)
 
                 elif action.type == ActionType.DELETE:
-                    self.io.tool_output(f"Deleting {action.path}")
+                    self.io.tool_output(_("Deleting {path}").format(path=action.path))
                     if not path_obj.exists():
                         self.io.tool_warning(
-                            f"DELETE Warning: File not found, skipping: {action.path}"
+                            _("DELETE Warning: File not found, skipping: {path}").format(
+                                path=action.path
+                            )
                         )
                     else:
                         path_obj.unlink()
@@ -607,16 +613,20 @@ class PatchCoder(Coder):
 
                     if action.move_path:
                         self.io.tool_output(
-                            f"Updating and moving {action.path} to {action.move_path}"
+                            _("Updating and moving {path} to {move_path}").format(
+                                path=action.path, move_path=action.move_path
+                            )
                         )
                         # Check if target exists before overwriting/moving
                         if target_path_obj.exists() and full_path != target_full_path:
                             self.io.tool_warning(
-                                "UPDATE Warning: Target file for move already exists, overwriting:"
-                                f" {action.move_path}"
+                                _(
+                                    "UPDATE Warning: Target file for move already exists,"
+                                    " overwriting: {move_path}"
+                                ).format(move_path=action.move_path)
                             )
                     else:
-                        self.io.tool_output(f"Updating {action.path}")
+                        self.io.tool_output(_("Updating {path}").format(path=action.path))
 
                     # Ensure parent directory exists for target
                     target_path_obj.parent.mkdir(parents=True, exist_ok=True)

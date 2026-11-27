@@ -1,5 +1,7 @@
 import json
 
+from aider.i18n import _
+
 from ..dump import dump  # noqa: F401
 from .base_coder import Coder
 from .editblock_coder import do_replace
@@ -130,7 +132,7 @@ class EditBlockFunctionCoder(Coder):
                 self.io.write_text(full_path, content)
                 edited.add(path)
                 continue
-            self.io.tool_error(f"Failed to apply edit to {path}")
+            self.io.tool_error(_("Failed to apply edit to {path}").format(path=path))
 
         return edited
 
