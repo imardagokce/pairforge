@@ -88,21 +88,6 @@ pip install -r requirements/requirements-dev.txt
 pytest
 ```
 
-## Using with OmniRoute (optional)
-
-[OmniRoute](https://github.com/diegosouzapw/OmniRoute) is a separate local gateway that exposes an OpenAI-compatible endpoint and routes requests to many providers, with fallback.
-
-```bash
-npm install -g omniroute && omniroute
-aider --omniroute --model openai/<model-id>
-```
-
-Inside aider, `/omniroute` lists the models the gateway currently serves. Pick one with `/model openai/<model-id>`.
-
-- Use your own API keys with the providers behind the gateway.
-- Keep the gateway listening on localhost only, and protect it with a key, because it holds all of your provider keys.
-- Using a gateway to share consumer-subscription logins or to disguise requests may violate provider terms and put your accounts at risk. pairforge does not support or recommend this.
-
 ## Contributing
 
 Issues and pull requests are welcome. See the [roadmap](ROADMAP.md) for planned work. Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.

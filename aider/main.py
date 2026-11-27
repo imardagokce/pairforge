@@ -29,7 +29,6 @@ from aider.deprecated import handle_deprecated_model_args
 from aider.format_settings import format_settings, scrub_sensitive_info
 from aider.history import ChatSummary
 from aider.io import InputOutput
-from aider.local_models import is_local_url
 from aider.llm import litellm  # noqa: F401; properly init litellm on launch
 from aider.models import ModelSettings
 from aider.onboarding import offer_openrouter_oauth, select_default_model
@@ -621,19 +620,6 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
     handle_deprecated_model_args(args, io)
     if args.openai_api_base:
         os.environ["OPENAI_API_BASE"] = args.openai_api_base
-    if args.omniroute:
-        if not args.openai_api_base:
-            os.environ["OPENAI_API_BASE"] = args.omniroute
-        if not os.environ.get("OPENAI_API_KEY"):
-            os.environ["OPENAI_API_KEY"] = os.environ.get("OMNIROUTE_API_KEY") or "omniroute"
-        omniroute_endpoint = os.environ["OPENAI_API_BASE"]
-        if not is_local_url(omniroute_endpoint) and omniroute_endpoint.startswith("http://"):
-            io.tool_warning(
-                "OmniRoute URL is not local and not HTTPS: your API key would be sent unencrypted."
-            )
-        io.tool_output(f"Using OmniRoute endpoint: {omniroute_endpoint}")
-        if not (args.model or "").startswith("openai/"):
-            io.tool_output("Hint: with OmniRoute, use --model openai/<model-id>.")
     if args.openai_api_version:
         io.tool_warning(
             "--openai-api-version is deprecated, use --set-env OPENAI_API_VERSION=<value>"

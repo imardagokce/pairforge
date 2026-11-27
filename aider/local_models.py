@@ -1,10 +1,11 @@
 import os
-from urllib.parse import urlsplit
+from concurrent.futures import ThreadPoolExecutor
 
 import requests
 
 DEFAULT_OLLAMA_BASE = "http://127.0.0.1:11434"
-DEFAULT_OMNIROUTE_BASE = "http://localhost:20128/v1"
+DEFAULT_LM_STUDIO_BASE = "http://127.0.0.1:1234/v1"
+DEFAULT_LLAMA_CPP_BASE = "http://127.0.0.1:8080/v1"
 
 
 class LocalModelError(Exception):
@@ -79,12 +80,42 @@ def list_openai_compatible_models(base_url, api_key=None, timeout=3):
     return sorted(ids)
 
 
-def is_local_url(url):
-    """Return True if url is an http(s) URL pointing at this machine."""
-    try:
-        parts = urlsplit(url)
-    except ValueError:
-        return False
-    if parts.scheme not in ("http", "https"):
-        return False
-    return parts.hostname in ("localhost", "127.0.0.1", "::1")
+def _env_base(name, default):
+    return (os.environ.get(name) or default).rstrip("/")
+
+
+def local_server_addresses():
+    """(name, base_url) for each local server type pairforge knows how to find."""
+    return [
+        ("Ollama", _env_base("OLLAMA_API_BASE", DEFAULT_OLLAMA_BASE)),
+        ("LM Studio", _env_base("LM_STUDIO_API_BASE", DEFAULT_LM_STUDIO_BASE)),
+        ("llama.cpp", _env_base("LLAMA_CPP_API_BASE", DEFAULT_LLAMA_CPP_BASE)),
+    ]
+
+
+def discover_local_servers(timeout=1):
+    """Probe the known local model servers and return the ones that answer.
+
+    Returns a list of dicts: {"name", "base_url", "models"}, where each model
+    name already carries the prefix to pass to /model. Servers that are not
+    running, or that answer with something unexpected, are left out.
+    """
+    prefixes = {"LM Studio": "lm_studio/", "llama.cpp": "openai/"}
+
+    def probe(name, base_url):
+        try:
+            if name == "Ollama":
+                found = list_ollama_models(base_url, timeout=timeout)
+                models = [f"ollama_chat/{m['name']}" for m in found]
+            else:
+                ids = list_openai_compatible_models(base_url, timeout=timeout)
+                models = [prefixes[name] + model_id for model_id in ids]
+        except LocalModelError:
+            return None
+        return {"name": name, "base_url": base_url, "models": models}
+
+    # Probe in parallel: a refused connection can take about a second on Windows.
+    addresses = local_server_addresses()
+    with ThreadPoolExecutor(max_workers=len(addresses)) as pool:
+        results = list(pool.map(lambda pair: probe(*pair), addresses))
+    return [server for server in results if server]

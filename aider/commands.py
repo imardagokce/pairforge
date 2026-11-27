@@ -20,10 +20,10 @@ from aider.help import Help, install_help_extra
 from aider.io import CommandCompletionException
 from aider.llm import litellm
 from aider.local_models import (
-    DEFAULT_OMNIROUTE_BASE,
     LocalModelError,
+    discover_local_servers,
     list_ollama_models,
-    list_openai_compatible_models,
+    local_server_addresses,
 )
 from aider.permissions import (
     MODES,
@@ -249,30 +249,39 @@ class Commands:
             self.io.tool_output(f"ollama_chat/{model['name']}  ({model['size_gb']} GB)")
         self.io.tool_output("Use one with: /model ollama_chat/<name>")
 
-    def cmd_omniroute(self, args):
-        "List models available on an OmniRoute gateway: /omniroute [base_url]"
+    def cmd_local(self, args):
+        "Find local model servers (Ollama, LM Studio, llama.cpp) and list their models"
 
-        base_url = (
-            args.strip()
-            or os.environ.get("OMNIROUTE_API_BASE")
-            or os.environ.get("OPENAI_API_BASE")
-            or DEFAULT_OMNIROUTE_BASE
-        )
-        api_key = os.environ.get("OMNIROUTE_API_KEY") or os.environ.get("OPENAI_API_KEY") or None
-
-        try:
-            found = list_openai_compatible_models(base_url, api_key)
-        except LocalModelError as e:
-            self.io.tool_error(str(e))
+        servers = discover_local_servers()
+        if not servers:
+            self.io.tool_output("No local model servers found. Checked:")
+            for name, base_url in local_server_addresses():
+                self.io.tool_output(f"  {name}: {base_url}")
+            self.io.tool_output(
+                "Start one, or point pairforge at it with OLLAMA_API_BASE, LM_STUDIO_API_BASE"
+                " or LLAMA_CPP_API_BASE."
+            )
             return
 
-        if not found:
-            self.io.tool_output(f"No models are available on the OmniRoute gateway at {base_url}.")
-            return
+        for server in servers:
+            self.io.tool_output(f"{server['name']} at {server['base_url']}:")
+            if not server["models"]:
+                self.io.tool_output("  (no models loaded)")
+            for model in server["models"]:
+                self.io.tool_output(model)
 
-        for model_id in found:
-            self.io.tool_output(f"openai/{model_id}")
-        self.io.tool_output("Use one with: /model openai/<id>")
+            if server["name"] == "LM Studio" and not os.environ.get("LM_STUDIO_API_BASE"):
+                os.environ["LM_STUDIO_API_BASE"] = server["base_url"]
+                self.io.tool_output(
+                    f"Set LM_STUDIO_API_BASE={server['base_url']} for this session."
+                )
+            elif server["name"] == "llama.cpp":
+                if os.environ.get("OPENAI_API_BASE") != server["base_url"]:
+                    self.io.tool_output(
+                        f"To use these, start pairforge with OPENAI_API_BASE={server['base_url']}"
+                    )
+
+        self.io.tool_output("Use one with: /model <name>")
 
     def cmd_web(self, args, return_content=False):
         "Scrape a webpage, convert to markdown and send in a message"

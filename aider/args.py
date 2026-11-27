@@ -78,18 +78,6 @@ def get_parser(default_config_files, git_root):
         help="Specify the api base url",
     )
     group.add_argument(
-        "--omniroute",
-        nargs="?",
-        const="http://localhost:20128/v1",
-        default=None,
-        metavar="URL",
-        env_var="OMNIROUTE_API_BASE",
-        help=(
-            "Use a local OmniRoute gateway as the OpenAI-compatible endpoint (default"
-            " http://localhost:20128/v1). Models are named openai/<model-id>."
-        ),
-    )
-    group.add_argument(
         "--openai-api-type",
         help="(deprecated, use --set-env OPENAI_API_TYPE=<value>)",
     )

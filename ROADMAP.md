@@ -18,7 +18,7 @@ What the inherited codebase already provides (found by mapping the source), so w
 
 ### 1. Local models made easy
 **Goal:** running a locally hosted model should take one command, not manual configuration.
-- [ ] Discover running local servers (Ollama, LM Studio, llama.cpp server) and list their models. **In progress** (`/ollama` lists Ollama models; LM Studio and llama.cpp are still to do)
+- [x] Discover running local servers (Ollama, LM Studio, llama.cpp server) and list their models. **Done** (`/local` checks all three at once; `/ollama` still lists Ollama alone)
 - [ ] `--local` quick-start that picks a model and sets sensible context size and edit format. **Planned**
 - [ ] Per-model presets for common local models (context window, edit format, token limits). **Planned**
 - [ ] Clear, actionable errors when the server is down or the context window is too small. **Planned**
@@ -74,10 +74,6 @@ What the inherited codebase already provides (found by mapping the source), so w
 **Goal:** for larger tasks, work the way a careful engineer does: plan, split the work, then code.
 - [ ] Build on the existing architect/editor mode: first a short plan, then a task breakdown, then the edits for each task. **Planned**
 - [ ] Show the plan and task list as they progress, and in `auto` permission mode run through them without stopping to ask. **Planned**
-
-### 10. Gateway support
-**Goal:** make it easy to put a routing gateway between pairforge and many providers.
-- [x] Optional OmniRoute integration: `--omniroute` and `/omniroute` (lists the gateway's models). It is an external service, not bundled. **Done**
 
 ## Working principles
 

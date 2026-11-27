@@ -8,7 +8,7 @@ from aider.commands import Commands
 from aider.io import InputOutput
 from aider.local_models import (
     LocalModelError,
-    is_local_url,
+    discover_local_servers,
     list_ollama_models,
     list_openai_compatible_models,
 )
@@ -107,6 +107,133 @@ class TestCmdOllama(unittest.TestCase):
         self.assertIn("Use one with: /model ollama_chat/<name>", printed)
 
 
+def _fake_get_by_port(responses):
+    """Return a requests.get replacement that answers by URL prefix, else refuses."""
+
+    def fake_get(url, **kwargs):
+        for prefix, resp in responses.items():
+            if url.startswith(prefix):
+                return resp
+        raise requests.ConnectionError("refused")
+
+    return fake_get
+
+
+class TestDiscoverLocalServers(unittest.TestCase):
+    def setUp(self):
+        self._env = mock.patch.dict(os.environ, {}, clear=False)
+        self._env.start()
+        for name in ("OLLAMA_API_BASE", "LM_STUDIO_API_BASE", "LLAMA_CPP_API_BASE"):
+            os.environ.pop(name, None)
+
+    def tearDown(self):
+        self._env.stop()
+
+    def test_nothing_running(self):
+        with mock.patch("aider.local_models.requests.get", side_effect=_fake_get_by_port({})):
+            self.assertEqual(discover_local_servers(), [])
+
+    def test_all_three_running(self):
+        responses = {
+            "http://127.0.0.1:11434": _fake_response(
+                payload={"models": [{"name": "llama3:latest", "size": 0}]}
+            ),
+            "http://127.0.0.1:1234": _fake_response(payload={"data": [{"id": "qwen-7b"}]}),
+            "http://127.0.0.1:8080": _fake_response(payload={"data": [{"id": "gguf-model"}]}),
+        }
+        with mock.patch(
+            "aider.local_models.requests.get", side_effect=_fake_get_by_port(responses)
+        ):
+            servers = discover_local_servers()
+
+        by_name = {s["name"]: s for s in servers}
+        self.assertEqual([s["name"] for s in servers], ["Ollama", "LM Studio", "llama.cpp"])
+        self.assertEqual(by_name["Ollama"]["models"], ["ollama_chat/llama3:latest"])
+        self.assertEqual(by_name["LM Studio"]["models"], ["lm_studio/qwen-7b"])
+        self.assertEqual(by_name["LM Studio"]["base_url"], "http://127.0.0.1:1234/v1")
+        self.assertEqual(by_name["llama.cpp"]["models"], ["openai/gguf-model"])
+        self.assertEqual(by_name["llama.cpp"]["base_url"], "http://127.0.0.1:8080/v1")
+
+    def test_unrelated_server_on_port_is_skipped(self):
+        responses = {"http://127.0.0.1:8080": _fake_response(json_error=ValueError("html"))}
+        with mock.patch(
+            "aider.local_models.requests.get", side_effect=_fake_get_by_port(responses)
+        ):
+            self.assertEqual(discover_local_servers(), [])
+
+    def test_env_overrides_addresses(self):
+        os.environ["LM_STUDIO_API_BASE"] = "http://box:5555/v1/"
+        os.environ["LLAMA_CPP_API_BASE"] = "http://box:6666/v1"
+        responses = {
+            "http://box:5555/v1/models": _fake_response(payload={"data": [{"id": "a"}]}),
+            "http://box:6666/v1/models": _fake_response(payload={"data": [{"id": "b"}]}),
+        }
+        with mock.patch(
+            "aider.local_models.requests.get", side_effect=_fake_get_by_port(responses)
+        ):
+            servers = discover_local_servers()
+
+        self.assertEqual(
+            [(s["name"], s["base_url"]) for s in servers],
+            [("LM Studio", "http://box:5555/v1"), ("llama.cpp", "http://box:6666/v1")],
+        )
+
+
+class TestCmdLocal(unittest.TestCase):
+    def setUp(self):
+        self._env = mock.patch.dict(os.environ, {}, clear=False)
+        self._env.start()
+        os.environ.pop("LM_STUDIO_API_BASE", None)
+        self.io = InputOutput(pretty=False, fancy_input=False, yes=True)
+        self.commands = Commands(self.io, None)
+
+    def tearDown(self):
+        self._env.stop()
+
+    def run_local(self, servers):
+        with mock.patch(
+            "aider.commands.discover_local_servers", return_value=servers
+        ), mock.patch.object(self.io, "tool_output") as tool_output:
+            self.commands.cmd_local("")
+        return [c.args[0] for c in tool_output.call_args_list if c.args]
+
+    def test_none_found_lists_probed_addresses(self):
+        printed = self.run_local([])
+        text = "\n".join(printed)
+        self.assertIn("No local model servers found", text)
+        self.assertIn("11434", text)
+        self.assertIn("1234", text)
+        self.assertIn("8080", text)
+
+    def test_lm_studio_sets_api_base_for_session(self):
+        servers = [
+            {"name": "LM Studio", "base_url": "http://127.0.0.1:1234/v1", "models": ["lm_studio/q"]}
+        ]
+        printed = self.run_local(servers)
+
+        self.assertIn("lm_studio/q", printed)
+        self.assertEqual(os.environ["LM_STUDIO_API_BASE"], "http://127.0.0.1:1234/v1")
+
+    def test_lm_studio_keeps_existing_api_base(self):
+        os.environ["LM_STUDIO_API_BASE"] = "http://other:1/v1"
+        servers = [
+            {"name": "LM Studio", "base_url": "http://127.0.0.1:1234/v1", "models": ["lm_studio/q"]}
+        ]
+        self.run_local(servers)
+        self.assertEqual(os.environ["LM_STUDIO_API_BASE"], "http://other:1/v1")
+
+    def test_llama_cpp_hints_openai_api_base_without_setting_it(self):
+        os.environ.pop("OPENAI_API_BASE", None)
+        servers = [
+            {"name": "llama.cpp", "base_url": "http://127.0.0.1:8080/v1", "models": ["openai/m"]}
+        ]
+        printed = self.run_local(servers)
+
+        self.assertIn("openai/m", printed)
+        self.assertTrue(any("OPENAI_API_BASE=http://127.0.0.1:8080/v1" in p for p in printed))
+        self.assertNotIn("OPENAI_API_BASE", os.environ)
+
+
 class TestListOpenAICompatibleModels(unittest.TestCase):
     def test_parses_normal_response(self):
         payload = {"data": [{"id": "gpt-4o"}, {"id": "claude-3-5-sonnet"}]}
@@ -182,120 +309,3 @@ class TestListOpenAICompatibleModels(unittest.TestCase):
             get.return_value = _fake_response(payload={"models": []})
             with self.assertRaises(LocalModelError):
                 list_openai_compatible_models("http://localhost:20128/v1")
-
-
-class TestIsLocalUrl(unittest.TestCase):
-    def test_localhost(self):
-        self.assertTrue(is_local_url("http://localhost:20128/v1"))
-
-    def test_ipv4_loopback(self):
-        self.assertTrue(is_local_url("http://127.0.0.1:20128/v1"))
-
-    def test_ipv6_loopback(self):
-        self.assertTrue(is_local_url("http://[::1]:20128/v1"))
-
-    def test_remote_host_is_not_local(self):
-        self.assertFalse(is_local_url("http://gateway.example.com:20128/v1"))
-
-    def test_https_remote_is_not_local(self):
-        self.assertFalse(is_local_url("https://gateway.example.com/v1"))
-
-    def test_non_http_scheme_is_not_local(self):
-        self.assertFalse(is_local_url("ftp://localhost/v1"))
-
-
-class TestCmdOmniroute(unittest.TestCase):
-    def setUp(self):
-        self._env = mock.patch.dict(os.environ, {}, clear=False)
-        self._env.start()
-        for name in (
-            "OMNIROUTE_API_BASE",
-            "OMNIROUTE_API_KEY",
-            "OPENAI_API_BASE",
-            "OPENAI_API_KEY",
-        ):
-            os.environ.pop(name, None)
-
-    def tearDown(self):
-        self._env.stop()
-
-    def test_cmd_omniroute_prints_models(self):
-        io = InputOutput(pretty=False, fancy_input=False, yes=True)
-        commands = Commands(io, None)
-
-        with mock.patch(
-            "aider.commands.list_openai_compatible_models", return_value=["gpt-4o", "qwen"]
-        ) as lister, mock.patch.object(io, "tool_output") as tool_output:
-            commands.cmd_omniroute("")
-
-        lister.assert_called_once_with("http://localhost:20128/v1", None)
-        printed = [c.args[0] for c in tool_output.call_args_list if c.args]
-        self.assertIn("openai/gpt-4o", printed)
-        self.assertIn("openai/qwen", printed)
-        self.assertIn("Use one with: /model openai/<id>", printed)
-
-    def test_cmd_omniroute_uses_env_base_and_key(self):
-        os.environ["OMNIROUTE_API_BASE"] = "http://10.0.0.5:20128/v1"
-        os.environ["OMNIROUTE_API_KEY"] = "omni-key"
-        io = InputOutput(pretty=False, fancy_input=False, yes=True)
-        commands = Commands(io, None)
-
-        with mock.patch(
-            "aider.commands.list_openai_compatible_models", return_value=[]
-        ) as lister, mock.patch.object(io, "tool_output"):
-            commands.cmd_omniroute("")
-
-        lister.assert_called_once_with("http://10.0.0.5:20128/v1", "omni-key")
-
-    def test_cmd_omniroute_falls_back_to_openai_base_and_key(self):
-        os.environ["OPENAI_API_BASE"] = "http://127.0.0.1:9999/v1"
-        os.environ["OPENAI_API_KEY"] = "openai-key"
-        io = InputOutput(pretty=False, fancy_input=False, yes=True)
-        commands = Commands(io, None)
-
-        with mock.patch(
-            "aider.commands.list_openai_compatible_models", return_value=[]
-        ) as lister, mock.patch.object(io, "tool_output"):
-            commands.cmd_omniroute("")
-
-        lister.assert_called_once_with("http://127.0.0.1:9999/v1", "openai-key")
-
-    def test_cmd_omniroute_argument_wins(self):
-        os.environ["OMNIROUTE_API_BASE"] = "http://10.0.0.5:20128/v1"
-        io = InputOutput(pretty=False, fancy_input=False, yes=True)
-        commands = Commands(io, None)
-
-        with mock.patch(
-            "aider.commands.list_openai_compatible_models", return_value=[]
-        ) as lister, mock.patch.object(io, "tool_output"):
-            commands.cmd_omniroute("http://192.168.1.2:20128/v1")
-
-        lister.assert_called_once_with("http://192.168.1.2:20128/v1", None)
-
-    def test_cmd_omniroute_empty_list(self):
-        io = InputOutput(pretty=False, fancy_input=False, yes=True)
-        commands = Commands(io, None)
-
-        with mock.patch(
-            "aider.commands.list_openai_compatible_models", return_value=[]
-        ), mock.patch.object(io, "tool_output") as tool_output:
-            commands.cmd_omniroute("")
-
-        printed = [c.args[0] for c in tool_output.call_args_list if c.args]
-        self.assertTrue(any("No models are available" in p for p in printed))
-
-    def test_cmd_omniroute_reports_error(self):
-        io = InputOutput(pretty=False, fancy_input=False, yes=True)
-        commands = Commands(io, None)
-
-        with mock.patch(
-            "aider.commands.list_openai_compatible_models",
-            side_effect=LocalModelError("boom"),
-        ), mock.patch.object(io, "tool_error") as tool_error:
-            commands.cmd_omniroute("")
-
-        tool_error.assert_called_once_with("boom")
-
-
-if __name__ == "__main__":
-    unittest.main()
