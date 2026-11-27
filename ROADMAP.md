@@ -67,7 +67,7 @@ What the inherited codebase already provides (found by mapping the source), so w
 - [x] A `--permission-mode auto` (and `/permissions`) that, inside a trusted folder, stops asking before adding files, creating or editing files, running shell commands and similar actions. The default mode `ask` keeps today's behavior. **Done**
 - [x] A one-time "Trust this folder?" question when pairforge starts in a folder it has not seen before; the answer is remembered. **Done**
 - [x] `/permissions trust` and `/permissions untrust` change a folder's trust during a session, so a "no" answer is not permanent. **Done**
-- [ ] Respect the model's context size: add small files in full, and give an outline for large ones instead of overflowing small local models or wasting paid tokens. **In progress** (auto mode only auto-adds a mentioned file if it fits in 25% of the context window; outlines for large files are still to do)
+- [ ] Respect the model's context size: add small files in full, and give an outline for large ones instead of overflowing small local models or wasting paid tokens. **Done** (in auto mode a mentioned file that fits in 25% of the context window is added in full; a larger one is sent as an outline of its classes and functions, built from the repo map, with a note to `/add` it for editing)
 - [ ] Optional graphify integration (an install extra, not a hard dependency) so reading a folder or file uses a code graph and targeted queries rather than raw file contents. **Planned**
 
 ### 9. Plan-first workflow

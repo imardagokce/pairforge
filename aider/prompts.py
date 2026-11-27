@@ -28,6 +28,10 @@ undo_command_reply = (
     " why the changes were reverted."
 )
 
+large_file_outline = """{fname} is too large to add to the chat in full ({tokens:,} tokens), so here is an outline of its classes and functions:
+{outline}
+To edit it, I need to add the whole file with /add {fname}."""
+
 added_files = (
     "I added these files to the chat: {fnames}\nLet me know if there are others we should add."
 )

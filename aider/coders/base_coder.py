@@ -360,6 +360,7 @@ class Coder:
         self.ignore_mentions = ignore_mentions
         if not self.ignore_mentions:
             self.ignore_mentions = set()
+        self.mention_outlines = []
 
         self.file_watcher = file_watcher
         if self.file_watcher:
@@ -923,6 +924,8 @@ class Coder:
             return self.commands.run(inp)
 
         self.check_for_file_mentions(inp)
+        if self.mention_outlines:
+            inp = inp + "\n\n" + "\n\n".join(self.mention_outlines)
         inp = self.check_for_urls(inp)
 
         return inp
@@ -1818,6 +1821,7 @@ class Coder:
         return mentioned_rel_fnames
 
     def check_for_file_mentions(self, content):
+        self.mention_outlines = []
         mentioned_rel_fnames = self.get_file_mentions(content)
 
         new_mentions = mentioned_rel_fnames - self.ignore_mentions
@@ -1828,10 +1832,26 @@ class Coder:
         added_fnames = []
         group = ConfirmGroup(new_mentions)
         for rel_fname in sorted(new_mentions):
-            if self.auto_add_mention_allowed(rel_fname):
+            decision, tokens, limit = self.auto_mention_decision(rel_fname)
+            outline = None
+            if decision == "outline":
+                outline = self.large_file_outline(rel_fname, max_tokens=limit)
+
+            if decision == "add":
                 self.add_rel_fname(rel_fname)
                 added_fnames.append(rel_fname)
                 self.io.tool_output(f"Auto-added {rel_fname} (permission mode: auto)")
+            elif outline:
+                self.ignore_mentions.add(rel_fname)
+                self.mention_outlines.append(
+                    prompts.large_file_outline.format(
+                        fname=rel_fname, tokens=tokens, outline=outline
+                    )
+                )
+                self.io.tool_output(
+                    f"{rel_fname} is too large to add in full ({tokens:,} tokens);"
+                    " sent an outline instead. Use /add to edit it."
+                )
             elif self.io.confirm_ask(
                 "Add file to the chat?", subject=rel_fname, group=group, allow_never=True
             ):
@@ -1840,8 +1860,12 @@ class Coder:
             else:
                 self.ignore_mentions.add(rel_fname)
 
+        parts = []
         if added_fnames:
-            return prompts.added_files.format(fnames=", ".join(added_fnames))
+            parts.append(prompts.added_files.format(fnames=", ".join(added_fnames)))
+        parts.extend(self.mention_outlines)
+        if parts:
+            return "\n\n".join(parts)
 
     def auto_permission_allows(self, abs_path):
         policy = getattr(self, "permission_policy", None)
@@ -1855,23 +1879,57 @@ class Coder:
         self.io.tool_output(f"Auto-approved: {description}")
         return True
 
-    def auto_add_mention_allowed(self, rel_fname):
-        """Auto mode adds a mentioned file without asking, but only if it is small."""
+    def auto_mention_decision(self, rel_fname):
+        """How auto mode handles a mentioned file: ("add" | "outline" | None, tokens, limit).
+
+        Files that fit in a quarter of the context window are added in full. Larger ones get
+        an outline instead. None means ask as usual (not auto mode, or the file is unreadable).
+        """
         abs_path = self.abs_root_path(rel_fname)
         if not self.auto_permission_allows(abs_path):
-            return False
+            return None, None, None
 
         content = self.io.read_text(abs_path, silent=True)
         if not isinstance(content, str):
-            return False
+            return None, None, None
 
         tokens = self.main_model.token_count(content)
         if tokens is None:
-            return False
+            return None, None, None
 
         max_input = self.main_model.info.get("max_input_tokens")
-        limit = max_input * 0.25 if max_input else 8000
-        return tokens <= limit
+        limit = int(max_input * 0.25) if max_input else 8000
+        return ("add" if tokens <= limit else "outline"), tokens, limit
+
+    def auto_add_mention_allowed(self, rel_fname):
+        """Auto mode adds a mentioned file without asking, but only if it is small."""
+        return self.auto_mention_decision(rel_fname)[0] == "add"
+
+    def large_file_outline(self, rel_fname, max_tokens):
+        """An outline (class and function lines) of a file, trimmed to max_tokens, or None."""
+        from aider.repomap import RepoMap
+
+        repo_map = self.repo_map or RepoMap(
+            map_tokens=1024, root=self.root, main_model=self.main_model, io=self.io
+        )
+        abs_path = self.abs_root_path(rel_fname)
+        try:
+            tags = [t for t in repo_map.get_tags(abs_path, rel_fname) if t.kind == "def"]
+            outline = repo_map.to_tree(tags, set()) if tags else ""
+        except Exception:
+            return None
+        if not outline.strip():
+            return None
+
+        lines = outline.splitlines()
+        if (self.main_model.token_count(outline) or 0) <= max_tokens:
+            return outline
+        while len(lines) > 1:
+            lines = lines[: max(1, len(lines) * 3 // 4)]
+            candidate = "\n".join(lines) + "\n... (more definitions not shown)"
+            if (self.main_model.token_count(candidate) or 0) <= max_tokens:
+                return candidate
+        return None
 
     def send(self, messages, model=None, functions=None):
         self.got_reasoning_content = False
