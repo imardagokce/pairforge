@@ -607,36 +607,6 @@ def get_parser(default_config_files, git_root):
         default=False,
     )
 
-    ##########
-    group = parser.add_argument_group("Analytics")
-    group.add_argument(
-        "--analytics",
-        action=argparse.BooleanOptionalAction,
-        default=None,
-        help="Enable/disable analytics for current session (default: random)",
-    )
-    group.add_argument(
-        "--analytics-log",
-        metavar="ANALYTICS_LOG_FILE",
-        help="Specify a file to log analytics events",
-    ).complete = shtab.FILE
-    group.add_argument(
-        "--analytics-disable",
-        action="store_true",
-        help="Permanently disable analytics",
-        default=False,
-    )
-    group.add_argument(
-        "--analytics-posthog-host",
-        metavar="ANALYTICS_POSTHOG_HOST",
-        help="Send analytics to custom PostHog instance",
-    )
-    group.add_argument(
-        "--analytics-posthog-project-api-key",
-        metavar="ANALYTICS_POSTHOG_PROJECT_API_KEY",
-        help="Send analytics to custom PostHog project",
-    )
-
     #########
     group = parser.add_argument_group("Upgrading")
     group.add_argument(
@@ -698,13 +668,6 @@ def get_parser(default_config_files, git_root):
         ),
     ).complete = shtab.FILE
     group.add_argument(
-        "--gui",
-        "--browser",
-        action=argparse.BooleanOptionalAction,
-        help="Run aider in your browser (default: False)",
-        default=False,
-    )
-    group.add_argument(
         "--copy-paste",
         action=argparse.BooleanOptionalAction,
         default=False,
@@ -738,28 +701,6 @@ def get_parser(default_config_files, git_root):
         action="store_true",
         help="Print the system prompts and exit (debug)",
         default=False,
-    )
-
-    ##########
-    group = parser.add_argument_group("Voice settings")
-    group.add_argument(
-        "--voice-format",
-        metavar="VOICE_FORMAT",
-        default="wav",
-        choices=["wav", "mp3", "webm"],
-        help="Audio format for voice recording (default: wav). webm and mp3 require ffmpeg",
-    )
-    group.add_argument(
-        "--voice-language",
-        metavar="VOICE_LANGUAGE",
-        default="en",
-        help="Specify the language for voice using ISO 639-1 code (default: auto)",
-    )
-    group.add_argument(
-        "--voice-input-device",
-        metavar="VOICE_INPUT_DEVICE",
-        default=None,
-        help="Specify the input device name for voice recording",
     )
 
     ######

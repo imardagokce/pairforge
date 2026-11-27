@@ -42,7 +42,7 @@ jobs:
       run: |
         sudo apt-get update
         # pandoc: otherwise pypandoc tries to download "latest" at test time and fails
-        sudo apt-get install -y libportaudio2 pandoc
+        sudo apt-get install -y pandoc
 
     - name: Install dependencies
       run: |

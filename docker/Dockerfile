@@ -2,7 +2,7 @@ FROM python:3.12-slim-bookworm AS base
 
 # Install system dependencies
 RUN apt-get update && \
-    apt-get install --no-install-recommends -y build-essential git libportaudio2 pandoc && \
+    apt-get install --no-install-recommends -y build-essential git pandoc && \
     rm -rf /var/lib/apt/lists/*
 
 # Create app user with UID 1000
@@ -40,7 +40,7 @@ COPY . /tmp/aider
 
 # Install dependencies as root
 RUN /venv/bin/python -m pip install --upgrade --no-cache-dir pip && \
-    /venv/bin/python -m pip install --no-cache-dir /tmp/aider[help,browser,playwright] boto3 \
+    /venv/bin/python -m pip install --no-cache-dir /tmp/aider[help,playwright] boto3 \
        --extra-index-url https://download.pytorch.org/whl/cpu && \
     rm -rf /tmp/aider
 

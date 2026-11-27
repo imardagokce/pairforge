@@ -207,76 +207,6 @@ def check_gitignore(git_root, io, ask=True):
             io.tool_output(f"  {pattern}")
 
 
-def check_streamlit_install(io):
-    return utils.check_pip_install_extra(
-        io,
-        "streamlit",
-        "You need to install the aider browser feature",
-        utils.EXTRA_PACKAGES["browser"],
-    )
-
-
-def write_streamlit_credentials():
-    from streamlit.file_util import get_streamlit_file_path
-
-    # See https://github.com/Aider-AI/aider/issues/772
-
-    credential_path = Path(get_streamlit_file_path()) / "credentials.toml"
-    if not os.path.exists(credential_path):
-        empty_creds = '[general]\nemail = ""\n'
-
-        os.makedirs(os.path.dirname(credential_path), exist_ok=True)
-        with open(credential_path, "w") as f:
-            f.write(empty_creds)
-    else:
-        print("Streamlit credentials already exist.")
-
-
-def launch_gui(args):
-    from streamlit.web import cli
-
-    from aider import gui
-
-    print()
-    print("CONTROL-C to exit...")
-
-    # Necessary so streamlit does not prompt the user for an email address.
-    write_streamlit_credentials()
-
-    target = gui.__file__
-
-    st_args = ["run", target]
-
-    st_args += [
-        "--browser.gatherUsageStats=false",
-        "--runner.magicEnabled=false",
-        "--server.runOnSave=false",
-    ]
-
-    # https://github.com/Aider-AI/aider/issues/2193
-    is_dev = "-dev" in str(__version__)
-
-    if is_dev:
-        print("Watching for file changes.")
-    else:
-        st_args += [
-            "--global.developmentMode=false",
-            "--server.fileWatcherType=none",
-            "--client.toolbarMode=viewer",  # minimal?
-        ]
-
-    st_args += ["--"] + args
-
-    cli.main(st_args)
-
-    # from click.testing import CliRunner
-    # runner = CliRunner()
-    # from streamlit.web import bootstrap
-    # bootstrap.load_config_options(flag_options={})
-    # cli.main_run(target, args)
-    # sys.argv = ['streamlit', 'run', '--'] + args
-
-
 def parse_lint_cmds(lint_cmds, io):
     err = False
     res = dict()
@@ -514,10 +444,6 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
     if git is None:
         args.git = False
 
-    if args.analytics_disable:
-        analytics = Analytics(permanently_disable=True)
-        print("Analytics have been permanently disabled.")
-
     if not args.verify_ssl:
         import httpx
 
@@ -635,33 +561,9 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
         )
         os.environ["OPENAI_ORGANIZATION"] = args.openai_organization_id
 
-    analytics = Analytics(
-        logfile=args.analytics_log,
-        permanently_disable=args.analytics_disable,
-        posthog_host=args.analytics_posthog_host,
-        posthog_project_api_key=args.analytics_posthog_project_api_key,
-    )
-    if args.analytics is not False:
-        if analytics.need_to_ask(args.analytics):
-            # pairforge never asks: analytics stay off unless --analytics is given.
-            analytics.asked_opt_in = True
-            if not args.analytics:
-                analytics.disable(permanently=True)
-            analytics.save_data()
-
-        # This is a no-op if the user has opted out
-        analytics.enable()
+    analytics = Analytics()
 
     analytics.event("launched")
-
-    if args.gui and not return_coder:
-        if not check_streamlit_install(io):
-            analytics.event("exit", reason="Streamlit not installed")
-            return
-        analytics.event("gui session")
-        launch_gui(argv)
-        analytics.event("exit", reason="GUI session ended")
-        return
 
     if args.verbose:
         for fname in loaded_dotenvs:
@@ -956,9 +858,6 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
     commands = Commands(
         io,
         None,
-        voice_language=args.voice_language,
-        voice_input_device=args.voice_input_device,
-        voice_format=args.voice_format,
         verify_ssl=args.verify_ssl,
         args=args,
         parser=parser,

@@ -208,7 +208,6 @@ EXTRA_PACKAGES = {
         'scikit-learn==1.7.2 ; python_version < "3.11"',
         'scikit-learn==1.8.0 ; python_version >= "3.11"',
     ],
-    "browser": ["streamlit"],
     "playwright": ["playwright"],
 }
 

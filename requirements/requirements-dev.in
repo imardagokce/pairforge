@@ -2,11 +2,9 @@ pytest
 pytest-cov
 pytest-env
 pip-tools
-lox
 matplotlib
 pandas
 typer
-imgcat
 pre-commit
 cogapp
 semver

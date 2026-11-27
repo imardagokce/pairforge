@@ -52,9 +52,9 @@ What the inherited codebase already provides (found by mapping the source), so w
 
 ### 6. Feature pruning
 **Goal:** remove what we do not use so the codebase is smaller and easier to change.
-- [ ] Audit features and decide what to keep (candidates: voice input, GUI mode, analytics, benchmark harness, website assets). **Planned**
-- [ ] Remove each item in its own change with tests updated. **Planned**
-- [ ] Drop unused dependencies as features go. **Planned**
+- [x] Audit features and decide what to keep (candidates: voice input, GUI mode, analytics, benchmark harness, website assets). Removed: GUI mode, voice input, benchmark harness. Analytics is now a no-op stub (pairforge collects nothing). Website assets are kept. **Done**
+- [x] Remove each item in its own change with tests updated. Removed in separate commits: the browser GUI (`--gui`/`--browser`, streamlit), `/voice` and its voice arguments, the benchmark harness (`benchmark/`), and analytics (the analytics arguments, the opt-in prompt and the posthog/mixpanel calls). `aider/analytics.py` is now a no-op `Analytics` class with the same interface, so call sites are unchanged. **Done**
+- [x] Drop unused dependencies as features go. Removed from the requirements: streamlit (with altair, blinker, cachetools, narwhals, pyarrow, pydeck, toml, tornado), pydub (with audioop-lts on Python 3.13+), sounddevice and soundfile (with cffi and pycparser), posthog and mixpanel (with asgiref, python-dateutil and six), and the dev dependencies lox and imgcat. Also removed the `browser` extra and the pydub requirements file. **Done**
 
 ### 7. Project identity
 **Goal:** make pairforge a clearly separate product.

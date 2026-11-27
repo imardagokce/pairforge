@@ -116,10 +116,6 @@ idna==3.11
     # via
     #   -c requirements/common-constraints.txt
     #   requests
-imgcat==0.6.0
-    # via
-    #   -c requirements/common-constraints.txt
-    #   -r requirements/requirements-dev.in
 iniconfig==2.3.0
     # via
     #   -c requirements/common-constraints.txt
@@ -128,10 +124,6 @@ kiwisolver==1.5.0
     # via
     #   -c requirements/common-constraints.txt
     #   matplotlib
-lox==1.0.0
-    # via
-    #   -c requirements/common-constraints.txt
-    #   -r requirements/requirements-dev.in
 markdown-it-py==4.0.0
     # via
     #   -c requirements/common-constraints.txt
