@@ -314,7 +314,13 @@ def check_pip_install_extra(io, module, prompt, pip_install_cmd, self_update=Fal
         print(printable_shell_command(cmd))  # plain print so it doesn't line-wrap
         return
 
-    if not io.confirm_ask("Run pip install?", default="y", subject=printable_shell_command(cmd)):
+    # explicit_yes_required: --yes-always must never install packages on its own
+    if not io.confirm_ask(
+        "Run pip install?",
+        default="y",
+        subject=printable_shell_command(cmd),
+        explicit_yes_required=True,
+    ):
         return
 
     success, output = run_install(cmd)

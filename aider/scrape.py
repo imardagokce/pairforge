@@ -59,7 +59,8 @@ See {urls.enable_playwright} for more info.
 """
 
     io.tool_output(text)
-    if not io.confirm_ask("Install playwright?", default="y"):
+    # explicit_yes_required: --yes-always must never install packages on its own
+    if not io.confirm_ask("Install playwright?", default="y", explicit_yes_required=True):
         return
 
     if not has_pip:
