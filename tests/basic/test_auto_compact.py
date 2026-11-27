@@ -117,3 +117,21 @@ class TestChatSummaryMaxTokensOverride(unittest.TestCase):
         summary.summarize([dict(role="user", content="a")], max_tokens=200)
         self.assertEqual(seen, [200])
         self.assertEqual(summary.max_tokens, 1000)
+
+
+class TestCompactReviewFixes(TestCompactForContext):
+    def test_zero_token_count_falls_back_to_estimate(self):
+        coder = self.make_coder()
+        coder.main_model.token_count = lambda m: 0 if isinstance(m, list) else len(m)
+        coder.done_messages = self.history(4000)
+        self.assertTrue(coder.compact_for_context(self.prompt(coder, 300)))
+        coder.summarizer.summarize.assert_called_once()
+
+    def test_summary_that_is_not_smaller_is_discarded(self):
+        coder = self.make_coder()
+        coder.done_messages = self.history(600)
+        original = list(coder.done_messages)
+        coder.summarizer.summarize.return_value = [dict(role="user", content="L" * 900)]
+        self.assertFalse(coder.compact_for_context(self.prompt(coder, 300)))
+        self.assertEqual(coder.done_messages, original)
+        coder.io.tool_warning.assert_called_once()

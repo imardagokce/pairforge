@@ -1,6 +1,6 @@
-import unittest
+﻿import unittest
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import git
 
@@ -101,3 +101,19 @@ class TestLargeFileOutline(unittest.TestCase):
             coder.check_for_file_mentions("Please look at small.py")
 
             self.assertIn(str(Path(coder.root) / "small.py"), coder.abs_fnames)
+
+    def test_outline_budget_is_much_smaller_than_add_limit(self):
+        with GitTemporaryDirectory():
+            self.commit("big.py", big_python_source(functions=400))
+            for window, expected in ((2000, 256), (100000, 1500), (20000, 1000)):
+                coder, io = self.make_coder(window=window)
+                with patch.object(coder, "large_file_outline", return_value="x") as outline:
+                    coder.check_for_file_mentions("Please explain big.py")
+                self.assertEqual(outline.call_args.kwargs["max_tokens"], expected)
+
+    def test_repomap_failure_gives_no_outline(self):
+        with GitTemporaryDirectory():
+            self.commit("big.py", big_python_source())
+            coder, io = self.make_coder()
+            with patch("aider.repomap.RepoMap", side_effect=RuntimeError("no tags")):
+                self.assertIsNone(coder.large_file_outline("big.py", max_tokens=500))

@@ -1420,12 +1420,12 @@ class Coder:
         if percent <= 0 or not window or not self.done_messages:
             return False
 
-        total = self.main_model.token_count(messages) or 0
+        total = self.count_message_tokens(messages)
         limit = int(window * percent / 100)
         if total <= limit:
             return False
 
-        history_tokens = self.main_model.token_count(self.done_messages) or 0
+        history_tokens = self.count_message_tokens(self.done_messages)
         budget = max(limit - (total - history_tokens), 256)
         if history_tokens <= budget:
             return False
@@ -1441,12 +1441,28 @@ class Coder:
             self.io.tool_warning(f"Could not summarize the chat history: {err}")
             return False
 
+        new_tokens = self.count_message_tokens(summary)
+        if new_tokens >= history_tokens:
+            self.io.tool_warning(
+                f"The summary ({new_tokens:,} tokens) was not smaller than the chat history"
+                f" ({history_tokens:,} tokens); keeping the history as it is."
+            )
+            return False
+
         self.done_messages = summary
-        new_tokens = self.main_model.token_count(summary) or 0
         self.io.tool_output(
             f"Chat history summarized: {history_tokens:,} -> {new_tokens:,} tokens."
         )
         return True
+
+    def count_message_tokens(self, messages):
+        """Token count of messages, estimated from their size when the tokenizer gives 0."""
+        if not messages:
+            return 0
+        tokens = self.main_model.token_count(messages) or 0
+        if tokens:
+            return tokens
+        return len(json.dumps(messages)) // 4
 
     def check_tokens(self, messages):
         """Check if the messages will fit within the model's token limits."""
@@ -1835,7 +1851,7 @@ class Coder:
             decision, tokens, limit = self.auto_mention_decision(rel_fname)
             outline = None
             if decision == "outline":
-                outline = self.large_file_outline(rel_fname, max_tokens=limit)
+                outline = self.large_file_outline(rel_fname, max_tokens=self.outline_budget())
 
             if decision == "add":
                 self.add_rel_fname(rel_fname)
@@ -1901,6 +1917,16 @@ class Coder:
         limit = int(max_input * 0.25) if max_input else 8000
         return ("add" if tokens <= limit else "outline"), tokens, limit
 
+    def outline_budget(self):
+        """Tokens an outline may use: 5% of the window, between 256 and 1500.
+
+        Outlines stay in the chat history, so they get far less room than a full file add.
+        """
+        max_input = self.main_model.info.get("max_input_tokens")
+        if not max_input:
+            return 1000
+        return min(max(256, int(max_input * 0.05)), 1500)
+
     def auto_add_mention_allowed(self, rel_fname):
         """Auto mode adds a mentioned file without asking, but only if it is small."""
         return self.auto_mention_decision(rel_fname)[0] == "add"
@@ -1909,11 +1935,11 @@ class Coder:
         """An outline (class and function lines) of a file, trimmed to max_tokens, or None."""
         from aider.repomap import RepoMap
 
-        repo_map = self.repo_map or RepoMap(
-            map_tokens=1024, root=self.root, main_model=self.main_model, io=self.io
-        )
         abs_path = self.abs_root_path(rel_fname)
         try:
+            repo_map = self.repo_map or RepoMap(
+                map_tokens=1024, root=self.root, main_model=self.main_model, io=self.io
+            )
             tags = [t for t in repo_map.get_tags(abs_path, rel_fname) if t.kind == "def"]
             outline = repo_map.to_tree(tags, set()) if tags else ""
         except Exception:
