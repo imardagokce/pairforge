@@ -1179,9 +1179,15 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
 
     analytics.event("cli session", main_model=main_model, edit_format=main_model.edit_format)
 
+    retry_message = None
     while True:
         try:
             coder.ok_to_warm_cache = bool(args.cache_keepalive_pings)
+            if retry_message is not None:
+                # A SwitchCoder carried a user request to re-run once in the new coder.
+                message, retry_message = retry_message, None
+                coder.run(with_message=message)
+                continue
             coder.run()
             analytics.event("exit", reason="Completed main CLI coder.run")
             return
@@ -1198,6 +1204,7 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
                 del kwargs["show_announcements"]
 
             coder = Coder.create(**kwargs)
+            retry_message = switch.retry_message
 
             if switch.kwargs.get("show_announcements") is not False:
                 coder.show_announcements()
